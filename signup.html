@@ -25,8 +25,12 @@ document.getElementById('signupForm').addEventListener('submit', async e => {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value.trim();
 
-  const response = await fetch(`${endpoint}?action=signup&borrowerNumber=${encodeURIComponent(borrowerNumber)}&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`);
-  const data = await response.json();
+try {
+    const response = await fetch(`${endpoint}?action=signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ borrowerNumber, name, email, password })
+    });  const data = await response.json();
   
   document.getElementById('message').textContent = data.message;
   if(data.success) window.location.href = 'login.html';
