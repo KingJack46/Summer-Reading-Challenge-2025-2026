@@ -1,49 +1,110 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Signup - Library Reading Challenge</title>
+  <meta charset="UTF-8">
+  <title>Sign Up - Library Reading Challenge</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 400px;
+      margin: 50px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    input, button {
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #message {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-<h2>Sign Up</h2>
-<form id="signupForm">
-  <input type="text" id="borrowerNumber" placeholder="Borrower Number" required><br>
-  <input type="text" id="name" placeholder="Full Name" required><br>
-  <input type="email" id="email" placeholder="Email" required><br>
-  <input type="password" id="password" placeholder="Password" required><br>
-  <button type="submit">Sign Up</button>
-</form>
-<div id="message"></div>
 
-<script>
-const endpoint = 'https://script.google.com/macros/s/AKfycbwdVUVEBlUXk4P4zJ-tV6NM-UulEPJMt-QRrWRvagBUQkvjSbgo5Lkmmqz8jaeRy3Xh/exec';
+  <h2>Sign Up</h2>
 
-document.getElementById('signupForm').addEventListener('submit', async e => {
-  e.preventDefault();
+  <form id="signupForm">
+    <input type="text" id="user_name" placeholder="Username" required><br>
+    <input type="password" id="password" placeholder="Password" required><br>
+    <input type="email" id="email" placeholder="Email (optional)"><br>
+    <input type="text" id="phone_number" placeholder="Phone number (optional)"><br>
+    <button type="submit">Sign Up</button>
+  </form>
 
-  const borrowerNumber = document.getElementById('borrowerNumber').value.trim();
-  const name = document.getElementById('name').value.trim();
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value.trim();
+  <div id="message"></div>
 
-  try {
-    const response = await fetch(`${endpoint}?action=signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ borrowerNumber, name, email, password })
+  <script>
+    // 🚨 Replace these with your Supabase project credentials
+    const SUPABASE_URL = 'https://hfugnpqguidgosxyuioj.supabase.co'; // 🔑 Your project URL
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdWducHFndWlkZ29zeHl1aW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NjE3ODAsImV4cCI6MjA3ODAzNzc4MH0.eawP-KaZTXOAE_OSYeJR6Ds_c6aKsqOsXo_EGifgtrU'; // 🔑 Your anon public key
+
+    // Initialize Supabase client
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const user_name = document.getElementById('user_name').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const email = document.getElementById('email').value.trim() || null;
+      const phone_number = document.getElementById('phone_number').value.trim() || null;
+
+      // ✅ Require at least one contact method
+      if (!email && !phone_number) {
+        document.getElementById('message').textContent =
+          'Please provide either an email or phone number.';
+        return;
+      }
+
+      document.getElementById('message').textContent = 'Creating your account...';
+
+      try {
+        const { data, error } = await supabase
+          .from('Userdetails')
+          .insert([
+            {
+              user_name,
+              password,
+              email,
+              phone_number,
+              last_login: new Date().toISOString(),
+              minutes_logged: 0
+            }
+          ]);
+
+        if (error) {
+          if (error.code === '23505') {
+            throw new Error('That username is already taken. Please choose another.');
+          }
+          throw error;
+        }
+
+        document.getElementById('message').textContent = 'Signup successful! Redirecting...';
+        setTimeout(() => {
+          window.location.href = 'login.html';
+        }, 1500);
+
+      } catch (err) {
+        document.getElementById('message').textContent = 'Error: ' + err.message;
+      }
     });
-
-    const data = await response.json();
-    document.getElementById('message').textContent = data.message;
-
-    if (data.success) window.location.href = 'login.html';
-  } catch (err) {
-    document.getElementById('message').textContent = 'Error: ' + err.message;
-  }
-});
-</script>
+  </script>
 
 </body>
 </html>
-
-
