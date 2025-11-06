@@ -89,6 +89,7 @@
 
         document.getElementById('message').textContent = 'Login successful! Redirecting...';
         // redirect to main app/dashboard page
+        sessionStorage.setItem('username', user_name);
         setTimeout(() => window.location.href = 'dashboard.html', 1000);
 
       } catch (err) {
@@ -99,4 +100,5 @@
 
 </body>
 </html>
+
 
