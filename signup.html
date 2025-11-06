@@ -42,7 +42,7 @@
   <form id="signupForm">
     <input type="text" id="user_name" placeholder="Username" required><br>
     <input type="password" id="password" placeholder="Password" required><br>
-    <input type="email" id="email" placeholder="Email (optional)"><br>
+    <input type="email_address" id="email_address" placeholder="email_address (optional)"><br>
     <input type="text" id="phone_number" placeholder="Phone number (optional)"><br>
     <button type="submit">Sign Up</button>
   </form>
@@ -62,13 +62,13 @@
 
       const user_name = document.getElementById('user_name').value.trim();
       const password = document.getElementById('password').value.trim();
-      const email = document.getElementById('email').value.trim() || null;
+      const email_address = document.getElementById('email_address').value.trim() || null;
       const phone_number = document.getElementById('phone_number').value.trim() || null;
 
       // ✅ Require at least one contact method
-      if (!email && !phone_number) {
+      if (!email_address && !phone_number) {
         document.getElementById('message').textContent =
-          'Please provide either an email or phone number.';
+          'Please provide either an email_address or phone number.';
         return;
       }
 
@@ -81,7 +81,7 @@
             {
               user_name,
               password,
-              email,
+              email_address,
               phone_number,
               last_login: new Date().toISOString(),
               minutes_logged: 0
@@ -108,3 +108,4 @@
 
 </body>
 </html>
+
