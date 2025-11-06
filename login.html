@@ -1,44 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Login - Library Reading Challenge</title>
+  <meta charset="UTF-8">
+  <title>Login - Library Reading Challenge</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 400px;
+      margin: 50px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    input, button {
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #message {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .link-btn {
+      background: #6c757d;
+      margin-top: 10px;
+    }
+    .link-btn:hover {
+      background: #5a6268;
+    }
+  </style>
 </head>
 <body>
-<h2>Login</h2>
-<form id="loginForm">
-  <input type="text" id="borrowerNumber" placeholder="Borrower Number" required><br>
-  <input type="password" id="password" placeholder="Password" required><br>
-  <button type="submit">Login</button>
-</form>
-<div id="errorBox" style="color:red;"></div>
 
-<script>
-const endpoint = 'https://script.google.com/macros/s/AKfycbwdVUVEBlUXk4P4zJ-tV6NM-UulEPJMt-QRrWRvagBUQkvjSbgo5Lkmmqz8jaeRy3Xh/exec';
+  <h2>Log In</h2>
 
-document.getElementById('loginForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const borrowerNumber = document.getElementById('borrowerNumber').value.trim();
-  const password = document.getElementById('password').value.trim();
-  const errorBox = document.getElementById('errorBox');
-  errorBox.textContent = '';
+  <form id="loginForm">
+    <input type="text" id="user_name" placeholder="Username" required><br>
+    <input type="password" id="password" placeholder="Password" required><br>
+    <button type="submit">Log In</button>
+  </form>
 
-  const response = await fetch(`${endpoint}?action=login`, {
-    method: 'POST',
-    body: JSON.stringify({ borrowerNumber, password }),
-    headers: { 'Content-Type': 'application/json' }
-  });
-  const data = await response.json();
+  <button class="link-btn" onclick="window.location.href='signup.html'">Don't have an account? Sign Up</button>
 
-  if(data.success){
-    sessionStorage.setItem('userName', data.name);
-    sessionStorage.setItem('booksRead', data.booksRead);
-    sessionStorage.setItem('points', data.points);
-    window.location.href = 'dashboard.html';
-  } else {
-    errorBox.textContent = data.message;
-  }
-});
-</script>
+  <div id="message"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://hfugnpqguidgosxyuioj.supabase.co';
+    const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE'; // replace with your anon key
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const user_name = document.getElementById('user_name').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      document.getElementById('message').textContent = 'Checking credentials...';
+
+      try {
+        const { data, error } = await supabase
+          .from('Userdetails')
+          .select('*')
+          .eq('user_name', user_name)
+          .eq('password', password)
+          .limit(1)
+          .single();
+
+        if (error || !data) {
+          throw new Error('Invalid username or password');
+        }
+
+        // Optionally update last_login
+        await supabase.from('Userdetails')
+          .update({ last_login: new Date().toISOString() })
+          .eq('id', data.id);
+
+        document.getElementById('message').textContent = 'Login successful! Redirecting...';
+        // redirect to main app/dashboard page
+        setTimeout(() => window.location.href = 'dashboard.html', 1000);
+
+      } catch (err) {
+        document.getElementById('message').textContent = 'Error: ' + err.message;
+      }
+    });
+  </script>
+
 </body>
 </html>
