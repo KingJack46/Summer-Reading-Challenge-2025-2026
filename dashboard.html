@@ -266,7 +266,7 @@ document.getElementById('logMinutesBtn').addEventListener('click', async () => {
   }
 
   // Update DB first
-  console.log(CurrentUser.user_name);
+  console.log(currentUser.user_name);
   const { data: updatedUser, error } = await supabase
     .from('Userdetails')
     .update({ minutes_logged: currentUser.minutes_logged + minutes })
@@ -296,6 +296,7 @@ document.getElementById('logMinutesBtn').addEventListener('click', async () => {
 
 </body>
 </html>
+
 
 
 
