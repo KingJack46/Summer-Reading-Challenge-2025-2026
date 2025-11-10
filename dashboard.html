@@ -272,6 +272,7 @@ document.getElementById('logMinutesBtn').addEventListener('click', async () => {
   .update({ minutes_logged: currentUser.minutes_logged + minutes })
   .eq('user_name', currentUser.user_name)
   .select(); // no .single()
+  .single();
   console.log(currentUser.id);
   console.log('Full response:', response);
 
@@ -305,6 +306,7 @@ document.getElementById('logMinutesBtn').addEventListener('click', async () => {
 
 </body>
 </html>
+
 
 
 
