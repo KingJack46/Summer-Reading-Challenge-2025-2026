@@ -277,8 +277,14 @@ document.getElementById('logMinutesBtn').addEventListener('click', async () => {
   console.log(currentUser.minutes_logged);
   console.log('Full response:', response);
 
+  const { data: userData, error: userError } = await supabase
+      .from('Userdetails')
+      .select('*')
+      .eq('user_name', username)
+      .single();
+  
   // Update local state
-  currentUser = updatedUser;
+  currentUser = userData;
   document.getElementById('userMinutes').textContent = `${currentUser.minutes_logged} minutes`;
 
   // Reset input
@@ -294,6 +300,7 @@ document.getElementById('logMinutesBtn').addEventListener('click', async () => {
 
 </body>
 </html>
+
 
 
 
