@@ -121,11 +121,12 @@
 
 <header>
   <h1>Library Reading Challenge</h1>
-  <div class="profile" id="profileIcon">U
-    <div class="dropdown" id="profileDropdown">
-      <button id="logoutBtn">Logout</button>
-    </div>
+  <div class="profile" id="profileIcon">
+  <span id="profileInitial">U</span>
+  <div class="dropdown" id="profileDropdown">
+    <button id="logoutBtn">Logout</button>
   </div>
+</div>
 </header>
 
 <div class="section" id="welcomeSection">
@@ -188,7 +189,7 @@
     currentUser = userData;
 
     // Profile icon
-    document.getElementById('profileIcon').textContent = currentUser.user_name[0].toUpperCase();
+    document.getElementById('profileInitial').textContent = currentUser.user_name[0].toUpperCase();
 
     // Welcome message
     document.getElementById('welcomeMessage').textContent = `Welcome back, ${currentUser.user_name}!`;
@@ -296,6 +297,7 @@ document.getElementById('logMinutesBtn').addEventListener('click', async () => {
 
 </body>
 </html>
+
 
 
 
