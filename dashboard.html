@@ -280,10 +280,20 @@
   });
 
   // 📝 Function to log minutes into loghistory
-  async function logMinutesToHistory(minutes, bookTitle = null) {
+  async function logMinutesToHistory(minutes, bookTitle) {
+    if (!bookTitle || bookTitle.trim() === '') {
+      alert('Please enter a book title before logging your minutes.');
+      return;
+    }
+
     const { error } = await supabase
       .from('loghistory')
-      .insert([{ user_name: currentUser.user_name, minutes_logged: minutes, book_title: bookTitle, time_logged: new Date().toISOString()}]);
+      .insert([{
+        user_name: currentUser.user_name,
+        minutes_logged: minutes,
+        book_title: bookTitle.trim(),
+        time_logged: new Date().toISOString()
+      }]);
 
     if (error) {
       console.error('Error logging minutes:', error);
@@ -293,26 +303,41 @@
     }
   }
 
+  // 🧾 Add Book Title Input Field (just before the minutes input)
+  const logSection = document.getElementById('logMinutesSection');
+  const bookTitleInput = document.createElement('input');
+  bookTitleInput.type = 'text';
+  bookTitleInput.id = 'bookTitleInput';
+  bookTitleInput.placeholder = 'Book Title';
+  bookTitleInput.style.marginRight = '10px';
+  logSection.insertBefore(bookTitleInput, document.getElementById('minutesInput'));
+
   // Manual entry
   document.getElementById('logMinutesBtn').addEventListener('click', async () => {
     const minutes = parseInt(document.getElementById('minutesInput').value);
+    const bookTitle = document.getElementById('bookTitleInput').value;
     const msg = document.getElementById('logMessage');
     msg.textContent = '';
+
+    if (!bookTitle || bookTitle.trim() === '') {
+      msg.textContent = 'Please enter the book title.';
+      return;
+    }
 
     if (isNaN(minutes) || minutes < 1 || minutes > 120) {
       msg.textContent = 'Please enter a valid number of minutes (1-120).';
       return;
     }
 
-    await logMinutesToHistory(minutes);
+    await logMinutesToHistory(minutes, bookTitle);
     document.getElementById('minutesInput').value = '';
+    document.getElementById('bookTitleInput').value = '';
   });
 
   // 🕒 Stopwatch feature
   let stopwatchInterval = null;
   let startTime = null;
 
-  const logSection = document.getElementById('logMinutesSection');
   const stopwatchDisplay = document.createElement('p');
   stopwatchDisplay.id = 'stopwatchDisplay';
   stopwatchDisplay.style.fontWeight = 'bold';
@@ -362,8 +387,15 @@
         return;
       }
 
-      if (confirm(`You read for about ${elapsedMinutes} minute(s). Log this time?`)) {
-        await logMinutesToHistory(elapsedMinutes);
+      const bookTitle = document.getElementById('bookTitleInput').value;
+      if (!bookTitle || bookTitle.trim() === '') {
+        msg.textContent = 'Please enter the book title before logging.';
+        return;
+      }
+
+      if (confirm(`You read "${bookTitle}" for about ${elapsedMinutes} minute(s). Log this time?`)) {
+        await logMinutesToHistory(elapsedMinutes, bookTitle);
+        document.getElementById('bookTitleInput').value = '';
       }
     }
   });
@@ -374,6 +406,7 @@
 
 </body>
 </html>
+
 
 
 
