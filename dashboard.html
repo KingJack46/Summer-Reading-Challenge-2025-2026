@@ -186,7 +186,7 @@
 
     currentUser = userData;
 
-    // Fetch total minutes for this user from loghistory
+    // Fetch this user's total minutes from loghistory
     const { data: logs, error: logError } = await supabase
       .from('loghistory')
       .select('minutes_logged')
@@ -199,21 +199,42 @@
 
     userTotalMinutes = logs?.reduce((sum, entry) => sum + entry.minutes_logged, 0) || 0;
 
+    // 🔄 Update this user's total minutes in Userdetails
+    await supabase
+      .from('Userdetails')
+      .update({ minutes_logged: userTotalMinutes })
+      .eq('user_name', currentUser.user_name);
+
     // Update UI
     document.getElementById('profileInitial').textContent = currentUser.user_name[0].toUpperCase();
     document.getElementById('welcomeMessage').textContent = `Welcome back, ${currentUser.user_name}!`;
     document.getElementById('userMinutes').textContent = `${userTotalMinutes} minutes`;
 
-    // Leaderboard — based on total logged minutes
-    const { data: leaderboardData } = await supabase.rpc('get_leaderboard'); 
-    // (⚠️ optional: see below to create this function if needed)
+    // 🧮 Fetch all users for leaderboard
+    const { data: allUsers, error: allUsersError } = await supabase
+      .from('Userdetails')
+      .select('user_name, minutes_logged');
 
+    if (allUsersError) {
+      console.error('Error loading all users:', allUsersError);
+      return;
+    }
+
+    // Sort by minutes_logged descending, get top 10
+    const top10 = allUsers
+      .filter(u => u.minutes_logged && u.minutes_logged > 0)
+      .sort((a, b) => b.minutes_logged - a.minutes_logged)
+      .slice(0, 10);
+
+    // Render leaderboard
     const container = document.getElementById('leaderboardContainer');
     container.innerHTML = '';
 
-    if (leaderboardData) {
-      leaderboardData.forEach(user => {
-        const barLength = Math.min(user.total_minutes / 10, 300);
+    if (top10.length === 0) {
+      container.textContent = 'No leaderboard data available.';
+    } else {
+      top10.forEach(user => {
+        const barLength = Math.min(user.minutes_logged / 10, 300);
 
         const barWrapper = document.createElement('div');
         barWrapper.classList.add('leaderboard-bar');
@@ -226,20 +247,18 @@
         barSpan.style.width = barLength + 'px';
         barSpan.style.backgroundColor = '#007bff';
 
-        const minutesLabel = document.createElement('div');
-        minutesLabel.classList.add('leaderboard-label');
-        minutesLabel.textContent = user.total_minutes;
+        const label = document.createElement('div');
+        label.classList.add('leaderboard-label');
+        label.textContent = `${user.user_name}: ${user.minutes_logged} min`;
 
         barWrapper.appendChild(profileDiv);
         barWrapper.appendChild(barSpan);
-        barWrapper.appendChild(minutesLabel);
+        barWrapper.appendChild(label);
         container.appendChild(barWrapper);
       });
-    } else {
-      container.textContent = 'No leaderboard data available.';
     }
 
-    // Community total (sum of all loghistory)
+    // 🌍 Community total (sum of all loghistory entries)
     const { data: allLogs } = await supabase.from('loghistory').select('minutes_logged');
     const totalMinutes = allLogs?.reduce((sum, l) => sum + l.minutes_logged, 0) || 0;
     document.getElementById('communityProgress').textContent =
@@ -355,6 +374,7 @@
 
 </body>
 </html>
+
 
 
 
