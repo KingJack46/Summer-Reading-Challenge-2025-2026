@@ -364,41 +364,45 @@
   }
 
   stopwatchBtn.addEventListener('click', async () => {
-    const msg = document.getElementById('logMessage');
-    msg.textContent = '';
+  const msg = document.getElementById('logMessage');
+  msg.textContent = '';
 
-    if (!stopwatchInterval) {
-      startTime = Date.now();
-      stopwatchBtn.textContent = 'Stop Stopwatch';
-      stopwatchInterval = setInterval(() => {
-        const elapsed = Date.now() - startTime;
-        stopwatchDisplay.textContent = '⏱ ' + formatTime(elapsed);
-      }, 1000);
-    } else {
-      clearInterval(stopwatchInterval);
-      stopwatchInterval = null;
-      stopwatchBtn.textContent = 'Start Stopwatch';
+  // If the stopwatch is NOT running — start it
+  if (!stopwatchInterval) {
+    startTime = Date.now();
+    stopwatchBtn.textContent = 'Stop Stopwatch';
+    stopwatchInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      stopwatchDisplay.textContent = '⏱ ' + formatTime(elapsed);
+    }, 1000);
+    return;
+  }
 
-      const elapsedMs = Date.now() - startTime;
-      const elapsedMinutes = Math.round(elapsedMs / 60000);
+  // 🧠 If we reach here, the stopwatch is running — before stopping, check book title
+  const bookTitle = document.getElementById('bookTitleInput').value;
+  if (!bookTitle || bookTitle.trim() === '') {
+    msg.textContent = 'Please enter the book title before stopping the stopwatch.';
+    return; // ⚠️ Don't stop stopwatch yet
+  }
 
-      if (elapsedMinutes < 1) {
-        msg.textContent = 'Session too short to log (<1 minute).';
-        return;
-      }
+  // 🕒 If a valid title is entered, now stop the stopwatch
+  clearInterval(stopwatchInterval);
+  stopwatchInterval = null;
+  stopwatchBtn.textContent = 'Start Stopwatch';
 
-      const bookTitle = document.getElementById('bookTitleInput').value;
-      if (!bookTitle || bookTitle.trim() === '') {
-        msg.textContent = 'Please enter the book title before logging.';
-        return;
-      }
+  const elapsedMs = Date.now() - startTime;
+  const elapsedMinutes = Math.round(elapsedMs / 60000);
 
-      if (confirm(`You read "${bookTitle}" for about ${elapsedMinutes} minute(s). Log this time?`)) {
-        await logMinutesToHistory(elapsedMinutes, bookTitle);
-        document.getElementById('bookTitleInput').value = '';
-      }
-    }
-  });
+  if (elapsedMinutes < 1) {
+    msg.textContent = 'Session too short to log (<1 minute).';
+    return;
+  }
+
+  if (confirm(`You read "${bookTitle}" for about ${elapsedMinutes} minute(s). Log this time?`)) {
+    await logMinutesToHistory(elapsedMinutes, bookTitle);
+    document.getElementById('bookTitleInput').value = '';
+  }
+});
 
   loadDashboard();
 </script>
@@ -406,6 +410,7 @@
 
 </body>
 </html>
+
 
 
 
