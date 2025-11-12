@@ -163,6 +163,7 @@
 
   const COMMUNITY_GOAL = 1000000;
   let currentUser = null;
+  let userTotalMinutes = 0;
 
   async function loadDashboard() {
     const username = sessionStorage.getItem('username');
@@ -171,6 +172,7 @@
       return;
     }
 
+    // Fetch user info
     const { data: userData, error: userError } = await supabase
       .from('Userdetails')
       .select('*')
@@ -183,66 +185,96 @@
     }
 
     currentUser = userData;
+
+    // Fetch total minutes for this user from loghistory
+    const { data: logs, error: logError } = await supabase
+      .from('loghistory')
+      .select('minutes_logged')
+      .eq('id', currentUser.user_name);
+
+    if (logError) {
+      console.error('Error fetching logs:', logError);
+      return;
+    }
+
+    userTotalMinutes = logs?.reduce((sum, entry) => sum + entry.minutes_logged, 0) || 0;
+
+    // Update UI
     document.getElementById('profileInitial').textContent = currentUser.user_name[0].toUpperCase();
     document.getElementById('welcomeMessage').textContent = `Welcome back, ${currentUser.user_name}!`;
-    document.getElementById('userMinutes').textContent = `${currentUser.minutes_logged} minutes`;
+    document.getElementById('userMinutes').textContent = `${userTotalMinutes} minutes`;
 
-    const { data: leaderboardData } = await supabase
-      .from('Userdetails')
-      .select('user_name, minutes_logged')
-      .order('minutes_logged', { ascending: false })
-      .limit(10);
+    // Leaderboard — based on total logged minutes
+    const { data: leaderboardData } = await supabase.rpc('get_leaderboard'); 
+    // (⚠️ optional: see below to create this function if needed)
 
     const container = document.getElementById('leaderboardContainer');
     container.innerHTML = '';
 
-    leaderboardData.forEach(user => {
-      const barLength = Math.min(user.minutes_logged / 10, 300);
+    if (leaderboardData) {
+      leaderboardData.forEach(user => {
+        const barLength = Math.min(user.total_minutes / 10, 300);
 
-      const barWrapper = document.createElement('div');
-      barWrapper.classList.add('leaderboard-bar');
+        const barWrapper = document.createElement('div');
+        barWrapper.classList.add('leaderboard-bar');
 
-      const profileDiv = document.createElement('div');
-      profileDiv.classList.add('leaderboard-profile');
-      profileDiv.textContent = user.user_name[0].toUpperCase();
+        const profileDiv = document.createElement('div');
+        profileDiv.classList.add('leaderboard-profile');
+        profileDiv.textContent = user.user_name[0].toUpperCase();
 
-      const barSpan = document.createElement('span');
-      barSpan.style.width = barLength + 'px';
-      barSpan.style.backgroundColor = '#007bff';
+        const barSpan = document.createElement('span');
+        barSpan.style.width = barLength + 'px';
+        barSpan.style.backgroundColor = '#007bff';
 
-      const minutesLabel = document.createElement('div');
-      minutesLabel.classList.add('leaderboard-label');
-      minutesLabel.textContent = user.minutes_logged;
+        const minutesLabel = document.createElement('div');
+        minutesLabel.classList.add('leaderboard-label');
+        minutesLabel.textContent = user.total_minutes;
 
-      barWrapper.appendChild(profileDiv);
-      barWrapper.appendChild(barSpan);
-      barWrapper.appendChild(minutesLabel);
-      container.appendChild(barWrapper);
-    });
+        barWrapper.appendChild(profileDiv);
+        barWrapper.appendChild(barSpan);
+        barWrapper.appendChild(minutesLabel);
+        container.appendChild(barWrapper);
+      });
+    } else {
+      container.textContent = 'No leaderboard data available.';
+    }
 
-    const { data: allData } = await supabase.from('Userdetails').select('minutes_logged');
-    const totalMinutes = allData.reduce((sum, u) => sum + u.minutes_logged, 0);
+    // Community total (sum of all loghistory)
+    const { data: allLogs } = await supabase.from('loghistory').select('minutes_logged');
+    const totalMinutes = allLogs?.reduce((sum, l) => sum + l.minutes_logged, 0) || 0;
     document.getElementById('communityProgress').textContent =
       `Community has logged ${totalMinutes} of ${COMMUNITY_GOAL} minutes (${((totalMinutes / COMMUNITY_GOAL) * 100).toFixed(2)}%)`;
   }
 
-  // Dropdown
+  // Profile dropdown toggle
   const profileIcon = document.getElementById('profileIcon');
   const dropdown = document.getElementById('profileDropdown');
   profileIcon.addEventListener('click', () => {
     dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
   });
-
   document.addEventListener('click', (e) => {
     if (!profileIcon.contains(e.target)) dropdown.style.display = 'none';
   });
-
   document.getElementById('logoutBtn').addEventListener('click', () => {
     sessionStorage.removeItem('username');
     window.location.href = 'login.html';
   });
 
-  // Manual log minutes
+  // 📝 Function to log minutes into loghistory
+  async function logMinutesToHistory(minutes, bookTitle = null) {
+    const { error } = await supabase
+      .from('loghistory')
+      .insert([{ id: currentUser.user_name, minutes_logged: minutes, book_title: bookTitle }]);
+
+    if (error) {
+      console.error('Error logging minutes:', error);
+      alert('Error logging minutes: ' + error.message);
+    } else {
+      await loadDashboard();
+    }
+  }
+
+  // Manual entry
   document.getElementById('logMinutesBtn').addEventListener('click', async () => {
     const minutes = parseInt(document.getElementById('minutesInput').value);
     const msg = document.getElementById('logMessage');
@@ -253,30 +285,14 @@
       return;
     }
 
-    const newTotalMinutes = currentUser.minutes_logged + minutes;
-    const { data: updatedUser, error } = await supabase
-      .from('Userdetails')
-      .update({ minutes_logged: newTotalMinutes })
-      .eq('user_name', currentUser.user_name)
-      .select()
-      .single();
-
-    if (error) {
-      msg.textContent = 'Error logging minutes: ' + error.message;
-      return;
-    }
-
-    currentUser = updatedUser;
-    document.getElementById('userMinutes').textContent = `${currentUser.minutes_logged} minutes`;
+    await logMinutesToHistory(minutes);
     document.getElementById('minutesInput').value = '';
-    await loadDashboard();
   });
 
-  // 🕒 Stopwatch logic
+  // 🕒 Stopwatch feature
   let stopwatchInterval = null;
   let startTime = null;
 
-  // Create stopwatch UI
   const logSection = document.getElementById('logMinutesSection');
   const stopwatchDisplay = document.createElement('p');
   stopwatchDisplay.id = 'stopwatchDisplay';
@@ -308,7 +324,6 @@
     msg.textContent = '';
 
     if (!stopwatchInterval) {
-      // Start stopwatch
       startTime = Date.now();
       stopwatchBtn.textContent = 'Stop Stopwatch';
       stopwatchInterval = setInterval(() => {
@@ -316,7 +331,6 @@
         stopwatchDisplay.textContent = '⏱ ' + formatTime(elapsed);
       }, 1000);
     } else {
-      // Stop stopwatch
       clearInterval(stopwatchInterval);
       stopwatchInterval = null;
       stopwatchBtn.textContent = 'Start Stopwatch';
@@ -330,22 +344,7 @@
       }
 
       if (confirm(`You read for about ${elapsedMinutes} minute(s). Log this time?`)) {
-        const newTotalMinutes = currentUser.minutes_logged + elapsedMinutes;
-        const { data: updatedUser, error } = await supabase
-          .from('Userdetails')
-          .update({ minutes_logged: newTotalMinutes })
-          .eq('user_name', currentUser.user_name)
-          .select()
-          .single();
-
-        if (error) {
-          msg.textContent = 'Error logging minutes: ' + error.message;
-          return;
-        }
-
-        currentUser = updatedUser;
-        document.getElementById('userMinutes').textContent = `${currentUser.minutes_logged} minutes`;
-        await loadDashboard();
+        await logMinutesToHistory(elapsedMinutes);
       }
     }
   });
@@ -356,6 +355,7 @@
 
 </body>
 </html>
+
 
 
 
