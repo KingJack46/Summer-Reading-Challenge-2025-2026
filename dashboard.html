@@ -190,7 +190,7 @@
     const { data: logs, error: logError } = await supabase
       .from('loghistory')
       .select('minutes_logged')
-      .eq('id', currentUser.user_name);
+      .eq('user_name', currentUser.user_name);
 
     if (logError) {
       console.error('Error fetching logs:', logError);
@@ -283,7 +283,7 @@
   async function logMinutesToHistory(minutes, bookTitle = null) {
     const { error } = await supabase
       .from('loghistory')
-      .insert([{ id: currentUser.user_name, minutes_logged: minutes, book_title: bookTitle, time_logged: new Date().toISOString()}]);
+      .insert([{ user_name: currentUser.user_name, minutes_logged: minutes, book_title: bookTitle, time_logged: new Date().toISOString()}]);
 
     if (error) {
       console.error('Error logging minutes:', error);
@@ -374,6 +374,7 @@
 
 </body>
 </html>
+
 
 
 
