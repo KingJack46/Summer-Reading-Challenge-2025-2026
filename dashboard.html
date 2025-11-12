@@ -282,7 +282,6 @@ document.getElementById('logMinutesBtn').addEventListener('click', async () => {
   }
   
   console.log(currentUser.minutes_logged);
-  console.log('Full response:', response);
   // Update local state
   currentUser = updatedUser;
   document.getElementById('userMinutes').textContent = `${currentUser.minutes_logged} minutes`;
@@ -300,6 +299,7 @@ document.getElementById('logMinutesBtn').addEventListener('click', async () => {
 
 </body>
 </html>
+
 
 
 
