@@ -264,7 +264,7 @@
   async function logMinutesToHistory(minutes, bookTitle = null) {
     const { error } = await supabase
       .from('loghistory')
-      .insert([{ id: currentUser.user_name, minutes_logged: minutes, book_title: bookTitle }]);
+      .insert([{ id: currentUser.user_name, minutes_logged: minutes, book_title: bookTitle, time_logged: new Date().toISOString()}]);
 
     if (error) {
       console.error('Error logging minutes:', error);
@@ -355,6 +355,7 @@
 
 </body>
 </html>
+
 
 
 
