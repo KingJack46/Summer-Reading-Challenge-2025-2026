@@ -158,23 +158,19 @@
 <script>
   // 🚨 Supabase config
   const SUPABASE_URL = 'https://hfugnpqguidgosxyuioj.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdWducHFndWlkZ29zeHl1aW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NjE3ODAsImV4cCI6MjA3ODAzNzc4MH0.eawP-KaZTXOAE_OSYeJR6Ds_c6aKsqOsXo_EGifgtrU'; // Replace with your anon key
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdWducHFndWlkZ29zeHl1aW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NjE3ODAsImV4cCI6MjA3ODAzNzc4MH0.eawP-KaZTXOAE_OSYeJR6Ds_c6aKsqOsXo_EGifgtrU';
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // Dynamic community goal
   const COMMUNITY_GOAL = 1000000;
-
   let currentUser = null;
 
   async function loadDashboard() {
-    // fetch current user session
     const username = sessionStorage.getItem('username');
     if (!username) {
       window.location.href = 'login.html';
       return;
     }
 
-    // Fetch current user data
     const { data: userData, error: userError } = await supabase
       .from('Userdetails')
       .select('*')
@@ -187,17 +183,10 @@
     }
 
     currentUser = userData;
-
-    // Profile icon
     document.getElementById('profileInitial').textContent = currentUser.user_name[0].toUpperCase();
-
-    // Welcome message
     document.getElementById('welcomeMessage').textContent = `Welcome back, ${currentUser.user_name}!`;
-
-    // User minutes
     document.getElementById('userMinutes').textContent = `${currentUser.minutes_logged} minutes`;
 
-    // Leaderboard
     const { data: leaderboardData } = await supabase
       .from('Userdetails')
       .select('user_name, minutes_logged')
@@ -208,7 +197,7 @@
     container.innerHTML = '';
 
     leaderboardData.forEach(user => {
-      const barLength = Math.min(user.minutes_logged / 10, 300); // scale for display
+      const barLength = Math.min(user.minutes_logged / 10, 300);
 
       const barWrapper = document.createElement('div');
       barWrapper.classList.add('leaderboard-bar');
@@ -219,7 +208,6 @@
 
       const barSpan = document.createElement('span');
       barSpan.style.width = barLength + 'px';
-      barSpan.textContent = '';
       barSpan.style.backgroundColor = '#007bff';
 
       const minutesLabel = document.createElement('div');
@@ -229,25 +217,24 @@
       barWrapper.appendChild(profileDiv);
       barWrapper.appendChild(barSpan);
       barWrapper.appendChild(minutesLabel);
-
       container.appendChild(barWrapper);
     });
 
-    // Community total
-    const { data: allData } = await supabase
-      .from('Userdetails')
-      .select('minutes_logged');
-
+    const { data: allData } = await supabase.from('Userdetails').select('minutes_logged');
     const totalMinutes = allData.reduce((sum, u) => sum + u.minutes_logged, 0);
     document.getElementById('communityProgress').textContent =
-      `Community has logged ${totalMinutes} of ${COMMUNITY_GOAL} minutes (${((totalMinutes/COMMUNITY_GOAL)*100).toFixed(2)}%)`;
+      `Community has logged ${totalMinutes} of ${COMMUNITY_GOAL} minutes (${((totalMinutes / COMMUNITY_GOAL) * 100).toFixed(2)}%)`;
   }
 
-  // Profile dropdown toggle
+  // Dropdown
   const profileIcon = document.getElementById('profileIcon');
   const dropdown = document.getElementById('profileDropdown');
   profileIcon.addEventListener('click', () => {
     dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!profileIcon.contains(e.target)) dropdown.style.display = 'none';
   });
 
   document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -255,48 +242,121 @@
     window.location.href = 'login.html';
   });
 
-  // Log minutes
-document.getElementById('logMinutesBtn').addEventListener('click', async () => {
-  const minutes = parseInt(document.getElementById('minutesInput').value);
-  const msg = document.getElementById('logMessage');
-  msg.textContent = '';
+  // Manual log minutes
+  document.getElementById('logMinutesBtn').addEventListener('click', async () => {
+    const minutes = parseInt(document.getElementById('minutesInput').value);
+    const msg = document.getElementById('logMessage');
+    msg.textContent = '';
 
-  if (isNaN(minutes) || minutes < 1 || minutes > 120) {
-    msg.textContent = 'Please enter a valid number of minutes (1-120).';
-    return;
+    if (isNaN(minutes) || minutes < 1 || minutes > 120) {
+      msg.textContent = 'Please enter a valid number of minutes (1-120).';
+      return;
+    }
+
+    const newTotalMinutes = currentUser.minutes_logged + minutes;
+    const { data: updatedUser, error } = await supabase
+      .from('Userdetails')
+      .update({ minutes_logged: newTotalMinutes })
+      .eq('user_name', currentUser.user_name)
+      .select()
+      .single();
+
+    if (error) {
+      msg.textContent = 'Error logging minutes: ' + error.message;
+      return;
+    }
+
+    currentUser = updatedUser;
+    document.getElementById('userMinutes').textContent = `${currentUser.minutes_logged} minutes`;
+    document.getElementById('minutesInput').value = '';
+    await loadDashboard();
+  });
+
+  // 🕒 Stopwatch logic
+  let stopwatchInterval = null;
+  let startTime = null;
+
+  // Create stopwatch UI
+  const logSection = document.getElementById('logMinutesSection');
+  const stopwatchDisplay = document.createElement('p');
+  stopwatchDisplay.id = 'stopwatchDisplay';
+  stopwatchDisplay.style.fontWeight = 'bold';
+  stopwatchDisplay.textContent = '⏱ 00:00';
+
+  const stopwatchBtn = document.createElement('button');
+  stopwatchBtn.textContent = 'Start Stopwatch';
+  stopwatchBtn.style.marginLeft = '10px';
+  stopwatchBtn.style.backgroundColor = '#007bff';
+  stopwatchBtn.style.color = 'white';
+  stopwatchBtn.style.border = 'none';
+  stopwatchBtn.style.padding = '8px 12px';
+  stopwatchBtn.style.borderRadius = '4px';
+  stopwatchBtn.style.cursor = 'pointer';
+
+  logSection.appendChild(stopwatchDisplay);
+  logSection.appendChild(stopwatchBtn);
+
+  function formatTime(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   }
 
-  // Update DB first
-  newTotalMinutes = currentUser.minutes_logged + minutes;
-  const { data: updatedUser, error } = await supabase
-    .from('Userdetails')
-    .update({ minutes_logged: newTotalMinutes })
-    .eq('user_name', currentUser.user_name)
-    .select() // Make sure to .select() to get the updated row back
-    .single(); // Use .single() as we're updating one user
+  stopwatchBtn.addEventListener('click', async () => {
+    const msg = document.getElementById('logMessage');
+    msg.textContent = '';
 
-  if (error) {
-    logMessage.textContent = 'Error logging minutes: ' + error.message;
-    return;
-  }
+    if (!stopwatchInterval) {
+      // Start stopwatch
+      startTime = Date.now();
+      stopwatchBtn.textContent = 'Stop Stopwatch';
+      stopwatchInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        stopwatchDisplay.textContent = '⏱ ' + formatTime(elapsed);
+      }, 1000);
+    } else {
+      // Stop stopwatch
+      clearInterval(stopwatchInterval);
+      stopwatchInterval = null;
+      stopwatchBtn.textContent = 'Start Stopwatch';
 
-  // Update local state
-  currentUser = updatedUser;
-  document.getElementById('userMinutes').textContent = `${currentUser.minutes_logged} minutes`;
+      const elapsedMs = Date.now() - startTime;
+      const elapsedMinutes = Math.round(elapsedMs / 60000);
 
-  // Reset input
-  document.getElementById('minutesInput').value = '';
-  
-  // Reload leaderboard & community progress (no need to refetch current user)
-  await loadDashboard();
-});
+      if (elapsedMinutes < 1) {
+        msg.textContent = 'Session too short to log (<1 minute).';
+        return;
+      }
 
-  // Run on page load
+      if (confirm(`You read for about ${elapsedMinutes} minute(s). Log this time?`)) {
+        const newTotalMinutes = currentUser.minutes_logged + elapsedMinutes;
+        const { data: updatedUser, error } = await supabase
+          .from('Userdetails')
+          .update({ minutes_logged: newTotalMinutes })
+          .eq('user_name', currentUser.user_name)
+          .select()
+          .single();
+
+        if (error) {
+          msg.textContent = 'Error logging minutes: ' + error.message;
+          return;
+        }
+
+        currentUser = updatedUser;
+        document.getElementById('userMinutes').textContent = `${currentUser.minutes_logged} minutes`;
+        await loadDashboard();
+      }
+    }
+  });
+
   loadDashboard();
 </script>
 
+
 </body>
 </html>
+
 
 
 
