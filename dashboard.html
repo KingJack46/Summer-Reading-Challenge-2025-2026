@@ -131,7 +131,7 @@
 
     .milestone-label {
       position: absolute;
-      top: 35px;
+      top: -22px;
       font-size: 12px;
       color: #333;
       transform: translateX(-50%);
@@ -281,7 +281,7 @@
     updateProgressBar(totalMinutes);
   }
 
-  function updateProgressBar(totalMinutes) {
+   function updateProgressBar(totalMinutes) {
     const fill = document.getElementById('progressFill');
     const text = document.getElementById('progressText');
     const container = document.getElementById('communityProgressBar');
@@ -289,25 +289,37 @@
     fill.style.width = percent + '%';
     text.textContent = `Community has logged ${totalMinutes.toLocaleString()} of ${COMMUNITY_GOAL.toLocaleString()} minutes (${percent.toFixed(2)}%)`;
 
-    // Clear and rebuild milestones
+    // Clear previous markers
     container.querySelectorAll('.milestone, .milestone-label').forEach(el => el.remove());
+
+    // Define milestone markers
     const milestones = [10000, 50000, 100000];
     for (let i = 200000; i <= COMMUNITY_GOAL; i += 100000) milestones.push(i);
 
+    // Build markers dynamically
     milestones.forEach(ms => {
       const pos = (ms / COMMUNITY_GOAL) * container.offsetWidth;
       const line = document.createElement('div');
       line.classList.add('milestone');
       line.style.left = `${pos}px`;
+
       const label = document.createElement('div');
       label.classList.add('milestone-label');
       label.style.left = `${pos}px`;
-      label.textContent = ms >= 1000000 ? '1M' : (ms >= 1000 ? (ms/1000)+'k' : ms);
+      label.textContent = ms >= 1000000 ? '1M' : (ms >= 1000 ? (ms / 1000) + 'k' : ms);
+
       container.append(line, label);
     });
   }
 
   // 📦 Event listeners
+
+  window.addEventListener('resize', async () => {
+    const { data: allLogs } = await supabase.from('loghistory').select('minutes_logged');
+    const totalMinutes = allLogs?.reduce((s, l) => s + l.minutes_logged, 0) || 0;
+    updateProgressBar(totalMinutes);
+  });
+
   document.getElementById('profileIcon').addEventListener('click', () => {
     const dropdown = document.getElementById('profileDropdown');
     dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
@@ -349,3 +361,4 @@
 
 </body>
 </html>
+
