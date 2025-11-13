@@ -451,9 +451,10 @@ async function handleBingoClick(index, cell) {
     await logReadingMinutes(currentUser, bonus, `Bingo: ${bingoData[index].challenge}`);
 
     // Insert a new row for this square
+    challengeId = bingoData[index].id
     await supabase.from('user_bingo_state').insert([{
       user_name: currentUser.user_name,
-      bingo_index: index + 1,
+      bingo_index: challengeId,
       completed: true,
       completed_at: new Date().toISOString()
     }]);
@@ -589,6 +590,7 @@ async function loadBingo() {
   </script>
 </body>
 </html>
+
 
 
 
