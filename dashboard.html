@@ -157,6 +157,41 @@
     .submit-minutes:hover {
       background-color: #218838;
     }
+    #bingoBoard {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  max-width: 90vw;       /* fills screen on mobile */
+  width: 60%;            /* 60% on larger screens */
+  margin: 0 auto;        /* center horizontally */
+}
+
+#bingoBoard div {
+  padding-top: 100%;     /* makes square aspect ratio */
+  position: relative;
+  border: 2px solid #555;
+  border-radius: 10px;
+  background-color: #f0f0f0;
+  text-align: center;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.2s;
+}
+
+#bingoBoard div.completed {
+  background-color: #28a745;
+  color: white;
+  cursor: default;
+}
+
+#bingoBoard div span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 5px;
+}
+
   </style>
 </head>
 <body>
@@ -367,21 +402,20 @@ function renderBingoBoard(challenges) {
 
   challenges.forEach((item, index) => {
     const cell = document.createElement('div');
-    cell.textContent = item.challenge;
-    cell.style.border = '1px solid #555';
-    cell.style.padding = '10px';
-    cell.style.textAlign = 'center';
-    cell.style.cursor = 'pointer';
-    cell.style.backgroundColor = '#f0f0f0';
-    cell.dataset.index = index;
+    const span = document.createElement('span');
+    span.textContent = item.challenge;
+    cell.appendChild(span);
 
-    if (userBingoState[Math.floor(index / BINGO_SIZE)][index % BINGO_SIZE])
-      cell.style.backgroundColor = '#28a745'; // already completed
+    const row = Math.floor(index / BINGO_SIZE);
+    const col = index % BINGO_SIZE;
+
+    if (userBingoState[row][col]) cell.classList.add('completed');
 
     cell.addEventListener('click', async () => handleBingoClick(index, cell));
     board.appendChild(cell);
   });
 }
+
 async function getUserBingoState(username) {
   const { data, error } = await supabase
     .from('user_bingo_state')
@@ -390,12 +424,16 @@ async function getUserBingoState(username) {
 
   if (error) throw error;
 
+  // initialize empty 5x5 array
   const state = Array(BINGO_SIZE).fill(null).map(() => Array(BINGO_SIZE).fill(false));
-  data.forEach(row => {
-    const r = Math.floor(row.bingo_index / BINGO_SIZE);
-    const c = row.bingo_index % BINGO_SIZE;
-    state[r][c] = row.completed;
-  });
+
+  if (data && data.length) {
+    data.forEach(row => {
+      const r = Math.floor(row.bingo_index / BINGO_SIZE);
+      const c = row.bingo_index % BINGO_SIZE;
+      state[r][c] = row.completed;
+    });
+  }
 
   return state;
 }
@@ -409,20 +447,21 @@ async function handleBingoClick(index, cell) {
   const bonus = bingoData[index].bonus_minutes;
 
   try {
-    // Log the bonus minutes
+    // Log bonus minutes
     await logReadingMinutes(currentUser, bonus, `Bingo: ${bingoData[index].challenge}`);
 
-    // Save bingo completion
-    await supabase.from('user_bingo_state').upsert([{
+    // Insert a new row for this square
+    await supabase.from('user_bingo_state').insert([{
       user_name: currentUser.user_name,
       bingo_index: index,
       completed: true,
       completed_at: new Date().toISOString()
-    }], { onConflict: ['user_name', 'bingo_index'] });
+    }]);
 
-    // Update local state & UI
+    // Update local state
     userBingoState[row][col] = true;
     cell.style.backgroundColor = '#28a745';
+    cell.style.cursor = 'default';
 
     await loadDashboard();
 
@@ -435,6 +474,7 @@ async function handleBingoClick(index, cell) {
     console.error('Error completing bingo square:', err.message);
   }
 }
+
 
 function checkBingoWin(row, col) {
   // Check row
@@ -549,6 +589,7 @@ async function loadBingo() {
   </script>
 </body>
 </html>
+
 
 
 
