@@ -205,6 +205,13 @@
         Start Stopwatch
       </button>
     </section>
+
+    <section id="bingoSection" class="section">
+    <h3>Reading Bingo</h3>
+    <p>Click a square when you complete a challenge to earn bonus minutes!</p>
+    <div id="bingoBoard" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:5px; max-width:500px;"></div>
+</section>
+
   </main>
 
   <script>
@@ -337,7 +344,129 @@
       const allLogs = await getAllLogs();
       const totalCommunityMinutes = allLogs.reduce((s, e) => s + e.minutes_logged, 0);
       renderProgressBar(totalCommunityMinutes);
+      await loadBingo();
     }
+
+    /* ========= BINGO LOGIC ========= */
+const BINGO_SIZE = 5;
+let bingoData = []; // [{challenge, bonus}]
+let userBingoState = Array(BINGO_SIZE).fill(null).map(() => Array(BINGO_SIZE).fill(false));
+let BINGO_WIN_BONUS = 20; // default, can come from backend
+
+async function getBingoData() {
+  // Replace 'bingochallenges' with your backend table name
+  const { data, error } = await supabase.from('bingochallenges').select('*');
+  if (error) throw error;
+  return data; 
+}
+
+function renderBingoBoard(challenges) {
+  const board = document.getElementById('bingoBoard');
+  board.innerHTML = '';
+  bingoData = challenges;
+
+  challenges.forEach((item, index) => {
+    const cell = document.createElement('div');
+    cell.textContent = item.challenge;
+    cell.style.border = '1px solid #555';
+    cell.style.padding = '10px';
+    cell.style.textAlign = 'center';
+    cell.style.cursor = 'pointer';
+    cell.style.backgroundColor = '#f0f0f0';
+    cell.dataset.index = index;
+
+    if (userBingoState[Math.floor(index / BINGO_SIZE)][index % BINGO_SIZE])
+      cell.style.backgroundColor = '#28a745'; // already completed
+
+    cell.addEventListener('click', async () => handleBingoClick(index, cell));
+    board.appendChild(cell);
+  });
+}
+async function getUserBingoState(username) {
+  const { data, error } = await supabase
+    .from('user_bingo')
+    .select('*')
+    .eq('user_name', username);
+
+  if (error) throw error;
+
+  const state = Array(BINGO_SIZE).fill(null).map(() => Array(BINGO_SIZE).fill(false));
+  data.forEach(row => {
+    const r = Math.floor(row.bingo_index / BINGO_SIZE);
+    const c = row.bingo_index % BINGO_SIZE;
+    state[r][c] = row.completed;
+  });
+
+  return state;
+}
+
+async function handleBingoClick(index, cell) {
+  const row = Math.floor(index / BINGO_SIZE);
+  const col = index % BINGO_SIZE;
+
+  if (userBingoState[row][col]) return; // already completed
+
+  const bonus = bingoData[index].bonus_minutes;
+
+  try {
+    // Log the bonus minutes
+    await logReadingMinutes(currentUser, bonus, `Bingo: ${bingoData[index].challenge}`);
+
+    // Save bingo completion
+    await supabase.from('user_bingo').upsert([{
+      user_name: currentUser.user_name,
+      bingo_index: index,
+      completed: true,
+      completed_at: new Date().toISOString()
+    }], { onConflict: ['user_name', 'bingo_index'] });
+
+    // Update local state & UI
+    userBingoState[row][col] = true;
+    cell.style.backgroundColor = '#28a745';
+
+    await loadDashboard();
+
+    if (checkBingoWin(row, col)) {
+      alert(`Bingo! You earned an extra ${BINGO_WIN_BONUS} bonus minutes!`);
+      await logReadingMinutes(currentUser, BINGO_WIN_BONUS, 'Bingo Board Win');
+      await loadDashboard();
+    }
+  } catch (err) {
+    console.error('Error completing bingo square:', err.message);
+  }
+}
+
+function checkBingoWin(row, col) {
+  // Check row
+  if (userBingoState[row].every(val => val)) return true;
+  // Check column
+  if (userBingoState.every(r => r[col])) return true;
+  // Check diagonals
+  if (row === col && userBingoState.every((r, i) => r[i])) return true;
+  if (row + col === BINGO_SIZE - 1 && userBingoState.every((r, i) => r[BINGO_SIZE - 1 - i])) return true;
+
+  return false;
+}
+
+/* ========= LOAD BINGO ========= */
+async function loadBingo() {
+  try {
+    const data = await getBingoData();
+    if (!data || data.length < 25) {
+      console.warn('Not enough bingo challenges. Fill at least 25 entries in the backend.');
+      return;
+    }
+
+    BINGO_WIN_BONUS = data.find(d => d.type === 'win_bonus')?.bonus_minutes || 20;
+
+    // Load user's saved progress
+    userBingoState = await getUserBingoState(currentUser.user_name);
+
+    renderBingoBoard(data.slice(0, 25));
+  } catch (err) {
+    console.error('Error loading bingo:', err.message);
+  }
+}
 
     /* ========= EVENT HANDLERS ========= */
     document.getElementById('profileIcon').addEventListener('click', e => {
@@ -420,5 +549,6 @@
   </script>
 </body>
 </html>
+
 
 
