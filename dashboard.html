@@ -384,7 +384,7 @@ function renderBingoBoard(challenges) {
 }
 async function getUserBingoState(username) {
   const { data, error } = await supabase
-    .from('user_bingo')
+    .from('user_bingo_state')
     .select('*')
     .eq('user_name', username);
 
@@ -413,7 +413,7 @@ async function handleBingoClick(index, cell) {
     await logReadingMinutes(currentUser, bonus, `Bingo: ${bingoData[index].challenge}`);
 
     // Save bingo completion
-    await supabase.from('user_bingo').upsert([{
+    await supabase.from('user_bingo_state').upsert([{
       user_name: currentUser.user_name,
       bingo_index: index,
       completed: true,
@@ -549,6 +549,7 @@ async function loadBingo() {
   </script>
 </body>
 </html>
+
 
 
 
