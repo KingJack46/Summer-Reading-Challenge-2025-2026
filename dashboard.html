@@ -453,7 +453,7 @@ async function handleBingoClick(index, cell) {
     // Insert a new row for this square
     await supabase.from('user_bingo_state').insert([{
       user_name: currentUser.user_name,
-      bingo_index: index,
+      bingo_index: index + 1,
       completed: true,
       completed_at: new Date().toISOString()
     }]);
@@ -589,6 +589,7 @@ async function loadBingo() {
   </script>
 </body>
 </html>
+
 
 
 
