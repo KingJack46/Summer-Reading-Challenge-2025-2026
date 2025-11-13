@@ -310,7 +310,7 @@
 
         const label = document.createElement('div');
         label.className = 'milestone-label';
-        label.textContent = ms >= 1_000_000 ? '1M' : (ms >= 1000 ? (ms / 1000) + 'k' : ms);
+        label.textContent = ms >= 1_000_000 ? (ms / 1_000_000).toFixed(1) + 'M' : (ms >= 1000 ? (ms / 1000) + 'k' : ms);
         label.style.left = `${pos}px`;
 
         container.append(line, label);
@@ -420,4 +420,5 @@
   </script>
 </body>
 </html>
+
 
