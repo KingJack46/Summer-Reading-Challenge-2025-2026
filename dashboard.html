@@ -1,17 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Dashboard - Library Reading Challenge</title>
+  <meta charset="UTF-8" />
+  <title>Library Reading Challenge</title>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
+      background: #f5f5f5;
       margin: 0;
-      padding: 0 20px;
-      background-color: #f5f5f5;
+      padding: 20px;
     }
-
     header {
       display: flex;
       justify-content: space-between;
@@ -19,99 +18,44 @@
       padding: 20px 0;
       border-bottom: 1px solid #ccc;
     }
-
-    .profile {
-      position: relative;
-      width: 40px;
-      height: 40px;
-      background-color: #007bff;
-      color: white;
-      font-weight: bold;
-      font-size: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 50%;
-      cursor: pointer;
-    }
-
-    .dropdown {
-      display: none;
-      position: absolute;
-      top: 50px;
-      right: 0;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      overflow: hidden;
-      z-index: 10;
-    }
-
-    .dropdown button {
-      width: 100%;
-      padding: 10px;
-      border: none;
-      background: none;
-      cursor: pointer;
-      text-align: left;
-    }
-
-    .dropdown button:hover {
-      background-color: #f0f0f0;
-    }
-
     .section {
       margin: 20px 0;
-      padding: 20px;
-      background: white;
+      background: #fff;
       border-radius: 6px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      padding: 20px;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
     }
-
     .leaderboard-bar {
       display: flex;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
-
-    .leaderboard-bar span {
-      display: inline-block;
-      height: 30px;
-      line-height: 30px;
-      color: white;
-      padding-left: 10px;
-      border-radius: 4px;
-    }
-
     .leaderboard-profile {
       width: 30px;
       height: 30px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin-right: 10px;
-      font-weight: bold;
-      color: white;
       border-radius: 50%;
-      background-color: #007bff;
-      flex-shrink: 0;
-    }
-
-    .leaderboard-label {
-      margin-left: 10px;
+      background: #007bff;
+      color: #fff;
       font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 10px;
+    }
+    .leaderboard-label {
+      font-weight: 600;
+      margin-left: 10px;
     }
 
+    /* Progress Bar */
     .progress-container {
       position: relative;
-      width: 100%;
       height: 30px;
       background-color: #e0e0e0;
       border-radius: 15px;
       overflow: visible;
-      margin-top: 10px;
+      margin-top: 15px;
     }
-
     .progress-bar {
       height: 100%;
       background: linear-gradient(90deg, #007bff, #00bfff);
@@ -119,259 +63,255 @@
       transition: width 0.5s ease;
       border-radius: 15px 0 0 15px;
     }
-
     .milestone {
       position: absolute;
       top: -8px;
       width: 2px;
       height: 46px;
       background: #555;
-      z-index: 2
+      z-index: 2;
     }
-
     .milestone-label {
-  position: absolute;
-  bottom: 100%; /* 👈 anchors the label above the bar */
-  margin-bottom: 10px; /* space between label and bar */
-  left: 0;
-  font-size: clamp(9px, 1.2vw, 11px); /* responsive text size */
-  color: #333;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  font-weight: 500;
-  z-index: 3;
-}
-
-    #communitySection h3 {
-      margin-bottom: 30px; /* adjust to taste */
+      position: absolute;
+      bottom: 100%;
+      margin-bottom: 8px;
+      font-size: clamp(9px, 1.2vw, 11px);
+      transform: translateX(-50%);
+      color: #333;
+      font-weight: 500;
+      white-space: nowrap;
+      z-index: 3;
     }
-
     .progress-text {
       margin-top: 10px;
       font-weight: bold;
     }
-
-    input[type="number"] {
-      width: 80px;
+    input, button {
       margin-right: 10px;
     }
-
-    button.submit-minutes {
+    button {
+      cursor: pointer;
+    }
+    .submit-minutes {
       background-color: #28a745;
       color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
     }
-
-    button.submit-minutes:hover {
+    .submit-minutes:hover {
       background-color: #218838;
     }
   </style>
 </head>
 <body>
 
-<header>
-  <h1>Library Reading Challenge</h1>
-  <div class="profile" id="profileIcon">
-    <span id="profileInitial">U</span>
-    <div class="dropdown" id="profileDropdown">
-      <button id="logoutBtn">Logout</button>
-    </div>
-  </div>
-</header>
+  <header>
+    <h1>Library Reading Challenge</h1>
+    <div id="profileIcon" class="profile">U</div>
+  </header>
 
-<div class="section" id="welcomeSection">
-  <h2 id="welcomeMessage">Welcome back!</h2>
-</div>
+  <main>
+    <section id="welcomeSection" class="section">
+      <h2 id="welcomeMessage">Welcome back!</h2>
+    </section>
 
-<div class="section" id="leaderboardSection">
-  <h3>Top 10 Leaderboard</h3>
-  <div id="leaderboardContainer"></div>
-</div>
+    <section id="leaderboardSection" class="section">
+      <h3>Top 10 Leaderboard</h3>
+      <div id="leaderboardContainer"></div>
+    </section>
 
-<!-- 🌍 COMMUNITY PROGRESS BAR -->
-<div class="section" id="communitySection">
-  <h3>Community Progress</h3>
-  <div class="progress-container" id="communityProgressBar">
-    <div class="progress-bar" id="progressFill"></div>
-  </div>
-  <div id="progressText" class="progress-text"></div>
-</div>
+    <section id="communitySection" class="section">
+      <h3>Community Progress</h3>
+      <div id="communityProgressBar" class="progress-container">
+        <div id="progressFill" class="progress-bar"></div>
+      </div>
+      <div id="progressText" class="progress-text"></div>
+    </section>
 
-<div class="section" id="userMinutesSection">
-  <h3>Your Logged Minutes</h3>
-  <p id="userMinutes"></p>
-</div>
+    <section id="userMinutesSection" class="section">
+      <h3>Your Logged Minutes</h3>
+      <p id="userMinutes">0 minutes</p>
+    </section>
 
-<div class="section" id="logMinutesSection">
-  <h3>Log More Minutes</h3>
-  <input type="text" id="bookTitleInput" placeholder="Book Title" style="margin-right:10px;">
-  <input type="number" id="minutesInput" placeholder="Minutes" min="1" max="120">
-  <button class="submit-minutes" id="logMinutesBtn">Log Minutes</button>
-  <p id="logMessage" style="color:red;"></p>
-</div>
+    <section id="logMinutesSection" class="section">
+      <h3>Log Reading Time</h3>
+      <input id="bookTitleInput" type="text" placeholder="Book Title">
+      <input id="minutesInput" type="number" placeholder="Minutes" min="1" max="120">
+      <button id="logMinutesBtn" class="submit-minutes">Log Minutes</button>
+      <p id="logMessage" style="color: red;"></p>
+    </section>
+  </main>
 
-<script>
-  const SUPABASE_URL = 'https://hfugnpqguidgosxyuioj.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdWducHFndWlkZ29zeHl1aW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NjE3ODAsImV4cCI6MjA3ODAzNzc4MH0.eawP-KaZTXOAE_OSYeJR6Ds_c6aKsqOsXo_EGifgtrU';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <script>
+    /* ========= CONFIG ========= */
+    const SUPABASE_URL = 'https://hfugnpqguidgosxyuioj.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const COMMUNITY_GOAL = 1_000_000;
 
-  const COMMUNITY_GOAL = 1000000;
-  let currentUser = null;
-  let userTotalMinutes = 0;
+    let currentUser = null;
 
-  async function loadDashboard() {
-    const username = sessionStorage.getItem('username');
-    if (!username) {
-      window.location.href = 'login.html';
-      return;
+    /* ========= DATA FETCH FUNCTIONS ========= */
+    async function getUserData(username) {
+      const { data, error } = await supabase
+        .from('Userdetails')
+        .select('*')
+        .eq('user_name', username)
+        .single();
+      if (error) throw error;
+      return data;
     }
 
-    // Fetch user data
-    const { data: userData, error: userError } = await supabase
-      .from('Userdetails')
-      .select('*')
-      .eq('user_name', username)
-      .single();
+    async function getUserLogs(username) {
+      const { data, error } = await supabase
+        .from('loghistory')
+        .select('minutes_logged')
+        .eq('user_name', username);
+      if (error) throw error;
+      return data;
+    }
 
-    if (userError) return alert('Error loading user data: ' + userError.message);
-    currentUser = userData;
+    async function getAllUsers() {
+      const { data, error } = await supabase
+        .from('Userdetails')
+        .select('user_name, minutes_logged');
+      if (error) throw error;
+      return data;
+    }
 
-    // Fetch logs for user
-    const { data: logs } = await supabase
-      .from('loghistory')
-      .select('minutes_logged')
-      .eq('user_name', currentUser.user_name);
+    async function getAllLogs() {
+      const { data, error } = await supabase.from('loghistory').select('minutes_logged');
+      if (error) throw error;
+      return data;
+    }
 
-    userTotalMinutes = logs?.reduce((sum, e) => sum + e.minutes_logged, 0) || 0;
+    /* ========= RENDER FUNCTIONS ========= */
+    function renderWelcome(user) {
+      document.getElementById('profileIcon').textContent = user.user_name[0].toUpperCase();
+      document.getElementById('welcomeMessage').textContent = `Welcome back, ${user.user_name}!`;
+    }
 
-    await supabase
-      .from('Userdetails')
-      .update({ minutes_logged: userTotalMinutes })
-      .eq('user_name', currentUser.user_name);
+    function renderUserMinutes(total) {
+      document.getElementById('userMinutes').textContent = `${total.toLocaleString()} minutes`;
+    }
 
-    document.getElementById('profileInitial').textContent = currentUser.user_name[0].toUpperCase();
-    document.getElementById('welcomeMessage').textContent = `Welcome back, ${currentUser.user_name}!`;
-    document.getElementById('userMinutes').textContent = `${userTotalMinutes} minutes`;
+    function renderLeaderboard(users) {
+      const container = document.getElementById('leaderboardContainer');
+      container.innerHTML = '';
+      if (!users.length) {
+        container.textContent = 'No leaderboard data available.';
+        return;
+      }
+      users
+        .sort((a, b) => b.minutes_logged - a.minutes_logged)
+        .slice(0, 10)
+        .forEach(user => {
+          const bar = document.createElement('div');
+          bar.classList.add('leaderboard-bar');
+          bar.innerHTML = `
+            <div class="leaderboard-profile">${user.user_name[0].toUpperCase()}</div>
+            <div style="background:#007bff;width:${Math.min(user.minutes_logged / 10,300)}px;height:30px;border-radius:4px;"></div>
+            <div class="leaderboard-label">${user.user_name}: ${user.minutes_logged} min</div>
+          `;
+          container.appendChild(bar);
+        });
+    }
 
-    // Leaderboard
-    const { data: allUsers } = await supabase
-      .from('Userdetails')
-      .select('user_name, minutes_logged');
+    function renderProgressBar(total) {
+      const fill = document.getElementById('progressFill');
+      const text = document.getElementById('progressText');
+      const container = document.getElementById('communityProgressBar');
+      const percent = Math.min((total / COMMUNITY_GOAL) * 100, 100);
+      fill.style.width = `${percent}%`;
+      text.textContent = `Community has logged ${total.toLocaleString()} of ${COMMUNITY_GOAL.toLocaleString()} minutes (${percent.toFixed(2)}%)`;
 
-    const top10 = allUsers
-      .filter(u => u.minutes_logged && u.minutes_logged > 0)
-      .sort((a, b) => b.minutes_logged - a.minutes_logged)
-      .slice(0, 10);
+      // clear old milestones
+      container.querySelectorAll('.milestone, .milestone-label').forEach(el => el.remove());
 
-    const container = document.getElementById('leaderboardContainer');
-    container.innerHTML = '';
-    if (top10.length === 0) container.textContent = 'No leaderboard data available.';
-    else {
-      top10.forEach(user => {
-        const barWrapper = document.createElement('div');
-        barWrapper.classList.add('leaderboard-bar');
-        const profileDiv = document.createElement('div');
-        profileDiv.classList.add('leaderboard-profile');
-        profileDiv.textContent = user.user_name[0].toUpperCase();
-        const barSpan = document.createElement('span');
-        barSpan.style.width = Math.min(user.minutes_logged / 10, 300) + 'px';
-        barSpan.style.backgroundColor = '#007bff';
+      const milestones = [10000, 50000, 100000];
+      for (let i = 200000; i <= COMMUNITY_GOAL; i += 100000) milestones.push(i);
+      milestones.forEach(ms => {
+        const pos = (ms / COMMUNITY_GOAL) * container.offsetWidth;
+        const line = document.createElement('div');
+        line.className = 'milestone';
+        line.style.left = `${pos}px`;
+
         const label = document.createElement('div');
-        label.classList.add('leaderboard-label');
-        label.textContent = `${user.user_name}: ${user.minutes_logged} min`;
-        barWrapper.append(profileDiv, barSpan, label);
-        container.appendChild(barWrapper);
+        label.className = 'milestone-label';
+        label.textContent = ms >= 1_000_000 ? '1M' : (ms >= 1000 ? (ms / 1000) + 'k' : ms);
+        label.style.left = `${pos}px`;
+
+        container.append(line, label);
       });
     }
 
-    // 🌍 Community total
-    const { data: allLogs } = await supabase.from('loghistory').select('minutes_logged');
-    const totalMinutes = allLogs?.reduce((s, l) => s + l.minutes_logged, 0) || 0;
-    updateProgressBar(totalMinutes);
-  }
+    /* ========= LOGGING ========= */
+    async function logReadingMinutes(user, minutes, bookTitle) {
+      const { error } = await supabase.from('loghistory').insert([
+        {
+          user_name: user.user_name,
+          minutes_logged: minutes,
+          book_title: bookTitle,
+          time_logged: new Date().toISOString(),
+        },
+      ]);
+      if (error) throw error;
+    }
 
-   function updateProgressBar(totalMinutes) {
-    const fill = document.getElementById('progressFill');
-    const text = document.getElementById('progressText');
-    const container = document.getElementById('communityProgressBar');
-    const percent = Math.min((totalMinutes / COMMUNITY_GOAL) * 100, 100);
-    fill.style.width = percent + '%';
-    text.textContent = `Community has logged ${totalMinutes.toLocaleString()} of ${COMMUNITY_GOAL.toLocaleString()} minutes (${percent.toFixed(2)}%)`;
+    /* ========= MAIN DASHBOARD LOGIC ========= */
+    async function loadDashboard() {
+      const username = sessionStorage.getItem('username');
+      if (!username) return (window.location.href = 'login.html');
 
-    // Clear previous markers
-    container.querySelectorAll('.milestone, .milestone-label').forEach(el => el.remove());
+      currentUser = await getUserData(username);
+      renderWelcome(currentUser);
 
-    // Define milestone markers
-    const milestones = [10000, 50000, 100000];
-    for (let i = 200000; i <= COMMUNITY_GOAL; i += 100000) milestones.push(i);
+      const userLogs = await getUserLogs(username);
+      const totalUserMinutes = userLogs.reduce((s, e) => s + e.minutes_logged, 0);
+      renderUserMinutes(totalUserMinutes);
 
-    // Build markers dynamically
-    milestones.forEach(ms => {
-      const pos = (ms / COMMUNITY_GOAL) * container.offsetWidth;
-      const line = document.createElement('div');
-      line.classList.add('milestone');
-      line.style.left = `${pos}px`;
+      await supabase
+        .from('Userdetails')
+        .update({ minutes_logged: totalUserMinutes })
+        .eq('user_name', username);
 
-      const label = document.createElement('div');
-      label.classList.add('milestone-label');
-      label.style.left = `${pos}px`;
-      label.textContent = ms >= 1000000 ? '1M' : (ms >= 1000 ? (ms / 1000) + 'k' : ms);
+      const allUsers = await getAllUsers();
+      renderLeaderboard(allUsers);
 
-      container.append(line, label);
+      const allLogs = await getAllLogs();
+      const totalCommunityMinutes = allLogs.reduce((s, e) => s + e.minutes_logged, 0);
+      renderProgressBar(totalCommunityMinutes);
+    }
+
+    /* ========= EVENT HANDLERS ========= */
+    document.getElementById('logMinutesBtn').addEventListener('click', async () => {
+      const minutes = parseInt(document.getElementById('minutesInput').value);
+      const title = document.getElementById('bookTitleInput').value.trim();
+      const msg = document.getElementById('logMessage');
+      msg.textContent = '';
+      if (!title) return (msg.textContent = 'Please enter a book title.');
+      if (isNaN(minutes) || minutes < 1 || minutes > 120)
+        return (msg.textContent = 'Enter a valid number of minutes (1–120).');
+
+      try {
+        await logReadingMinutes(currentUser, minutes, title);
+        document.getElementById('minutesInput').value = '';
+        document.getElementById('bookTitleInput').value = '';
+        await loadDashboard();
+      } catch (err) {
+        msg.textContent = 'Error logging minutes: ' + err.message;
+      }
     });
-  }
 
-  // 📦 Event listeners
+    window.addEventListener('resize', async () => {
+      const allLogs = await getAllLogs();
+      const total = allLogs.reduce((s, e) => s + e.minutes_logged, 0);
+      renderProgressBar(total);
+    });
 
-  window.addEventListener('resize', async () => {
-    const { data: allLogs } = await supabase.from('loghistory').select('minutes_logged');
-    const totalMinutes = allLogs?.reduce((s, l) => s + l.minutes_logged, 0) || 0;
-    updateProgressBar(totalMinutes);
-  });
-
-  document.getElementById('profileIcon').addEventListener('click', () => {
-    const dropdown = document.getElementById('profileDropdown');
-    dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-  });
-
-  document.addEventListener('click', e => {
-    if (!document.getElementById('profileIcon').contains(e.target))
-      document.getElementById('profileDropdown').style.display = 'none';
-  });
-
-  document.getElementById('logoutBtn').addEventListener('click', () => {
-    sessionStorage.removeItem('username');
-    window.location.href = 'login.html';
-  });
-
-  async function logMinutesToHistory(minutes, bookTitle) {
-    const { error } = await supabase
-      .from('loghistory')
-      .insert([{ user_name: currentUser.user_name, minutes_logged: minutes, book_title: bookTitle, time_logged: new Date().toISOString() }]);
-    if (error) alert('Error logging minutes: ' + error.message);
-    else await loadDashboard();
-  }
-
-  document.getElementById('logMinutesBtn').addEventListener('click', async () => {
-    const minutes = parseInt(document.getElementById('minutesInput').value);
-    const bookTitle = document.getElementById('bookTitleInput').value;
-    const msg = document.getElementById('logMessage');
-    msg.textContent = '';
-    if (!bookTitle.trim()) return msg.textContent = 'Please enter the book title.';
-    if (isNaN(minutes) || minutes < 1 || minutes > 120)
-      return msg.textContent = 'Please enter a valid number of minutes (1–120).';
-    await logMinutesToHistory(minutes, bookTitle);
-    document.getElementById('minutesInput').value = '';
-    document.getElementById('bookTitleInput').value = '';
-  });
-
-  loadDashboard();
-</script>
-
+    /* ========= INIT ========= */
+    loadDashboard();
+  </script>
 </body>
 </html>
-
-
-
-
-
-
