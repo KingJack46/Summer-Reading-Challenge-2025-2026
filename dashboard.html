@@ -181,7 +181,6 @@
 #bingoBoard div.completed {
   background-color: #28a745;
   color: white;
-  cursor: default;
 }
 
 #bingoBoard div span {
@@ -442,63 +441,91 @@ async function handleBingoClick(index, cell) {
   const row = Math.floor(index / BINGO_SIZE);
   const col = index % BINGO_SIZE;
   const bonus = bingoData[index].bonus_minutes;
-
-  if (userBingoState[row][col]) {
-  // Update the user's bingo square to mark it as not completed
-  const { data, error } = await supabase
-    .from('user_bingo_state')
-    .update({ completed: false, completed_at: null }) // unmark
-    .eq('user_name', username)
-    .eq('bingo_index', index); // filter by bingo index
-
-  // Deduct bonus minutes for unmarking
-  await logReadingMinutes(currentUser, -bonus, `Unmark Bingo: ${bingoData[index].challenge}`);
-
-  if (error) {
-    console.error('Error unmarking bingo square:', error);
-    return;
-  }
-
-  console.log('Bingo square unmarked:', data);
-
-  // **Undo frontend marking**
-  userBingoState[row][col] = false;
-  cell.style.backgroundColor = '';  // reset to default
-  cell.style.cursor = 'pointer';    // make clickable again
-  await loadDashboard();            // refresh dashboard if needed
-}
-
-
+  const challengeName = bingoData[index].challenge;
 
   try {
-    // Log bonus minutes
-    await logReadingMinutes(currentUser, bonus, `Bingo: ${bingoData[index].challenge}`);
+    // Check if this square already exists for the user
+    const { data: existingRows, error: selectError } = await supabase
+      .from('user_bingo_state')
+      .select('*')
+      .eq('user_name', currentUser.user_name)
+      .eq('bingo_index', index)
+      .limit(1)
+      .single();
 
-    // Insert a new row for this square
-    
-    await supabase.from('user_bingo_state').insert([{
-      user_name: currentUser.user_name,
-      bingo_index: index,
-      completed: true,
-      completed_at: new Date().toISOString()
-    }]);
+    if (selectError && selectError.code !== 'PGRST116') {
+      console.error('Error checking bingo square:', selectError);
+      return;
+    }
 
-    // Update local state
-    userBingoState[row][col] = true;
-    cell.style.backgroundColor = '#28a745';
-    cell.style.cursor = 'default';
+    if (existingRows) {
+      // Row exists, toggle completed state
+      const newCompleted = !existingRows.completed;
 
-    await loadDashboard();
+      const { data: updateData, error: updateError } = await supabase
+        .from('user_bingo_state')
+        .update({ 
+          completed: newCompleted, 
+          completed_at: newCompleted ? new Date().toISOString() : null 
+        })
+        .eq('user_name', currentUser.user_name)
+        .eq('bingo_index', index);
 
+      if (updateError) {
+        console.error('Error updating bingo square:', updateError);
+        return;
+      }
+
+      // Log minutes
+      await logReadingMinutes(
+        currentUser, 
+        newCompleted ? bonus : -bonus, 
+        `${newCompleted ? 'Bingo' : 'Unmark Bingo'}: ${challengeName}`
+      );
+
+      // Update frontend state
+      userBingoState[row][col] = newCompleted;
+      cell.style.backgroundColor = newCompleted ? '#28a745' : '';
+      cell.style.cursor = 'pointer';
+
+    } else {
+      // Row does not exist yet, insert new row as completed
+      const { data: insertData, error: insertError } = await supabase
+        .from('user_bingo_state')
+        .insert([{
+          user_name: currentUser.user_name,
+          bingo_index: index,
+          completed: true,
+          completed_at: new Date().toISOString()
+        }]);
+
+      if (insertError) {
+        console.error('Error inserting bingo square:', insertError);
+        return;
+      }
+
+      // Log bonus minutes
+      await logReadingMinutes(currentUser, bonus, `Bingo: ${challengeName}`);
+
+      // Update frontend state
+      userBingoState[row][col] = true;
+      cell.style.backgroundColor = '#28a745';
+      cell.style.cursor = 'pointer';
+    }
+
+    // Check for bingo win
     if (checkBingoWin(row, col)) {
       alert(`Bingo! You earned an extra ${BINGO_WIN_BONUS} bonus minutes!`);
       await logReadingMinutes(currentUser, BINGO_WIN_BONUS, 'Bingo Board Win');
-      await loadDashboard();
     }
+
+    await loadDashboard(); // refresh dashboard if needed
+
   } catch (err) {
-    console.error('Error completing bingo square:', err.message);
+    console.error('Error handling bingo click:', err);
   }
 }
+
 
 
 function checkBingoWin(row, col) {
@@ -614,6 +641,7 @@ async function loadBingo() {
   </script>
 </body>
 </html>
+
 
 
 
