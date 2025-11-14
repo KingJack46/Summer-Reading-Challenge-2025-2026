@@ -441,20 +441,44 @@ async function getUserBingoState(username) {
 async function handleBingoClick(index, cell) {
   const row = Math.floor(index / BINGO_SIZE);
   const col = index % BINGO_SIZE;
-
-  if (userBingoState[row][col]) return; // already completed
-
   const bonus = bingoData[index].bonus_minutes;
+
+  if (userBingoState[row][col]) {
+  // Update the user's bingo square to mark it as not completed
+  const { data, error } = await supabase
+    .from('user_bingo_state')
+    .update({ completed: false, completed_at: null }) // unmark
+    .eq('user_name', username)
+    .eq('bingo_index', index); // filter by bingo index
+
+  // Deduct bonus minutes for unmarking
+  await logReadingMinutes(currentUser, -bonus, `Unmark Bingo: ${bingoData[index].challenge}`);
+
+  if (error) {
+    console.error('Error unmarking bingo square:', error);
+    return;
+  }
+
+  console.log('Bingo square unmarked:', data);
+
+  // **Undo frontend marking**
+  userBingoState[row][col] = false;
+  cell.style.backgroundColor = '';  // reset to default
+  cell.style.cursor = 'pointer';    // make clickable again
+  await loadDashboard();            // refresh dashboard if needed
+}
+
+
 
   try {
     // Log bonus minutes
     await logReadingMinutes(currentUser, bonus, `Bingo: ${bingoData[index].challenge}`);
 
     // Insert a new row for this square
-    challengeId = bingoData[index].id
+    
     await supabase.from('user_bingo_state').insert([{
       user_name: currentUser.user_name,
-      bingo_index: challengeId,
+      bingo_index: index,
       completed: true,
       completed_at: new Date().toISOString()
     }]);
@@ -590,6 +614,7 @@ async function loadBingo() {
   </script>
 </body>
 </html>
+
 
 
 
