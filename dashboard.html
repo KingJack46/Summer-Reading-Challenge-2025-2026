@@ -298,6 +298,7 @@
         book_title: bookTitle,
         time_logged: new Date().toISOString()
       }]);
+      renderUserMinutes(currentUser.minutes_logged)
       if (error) throw error;
     }
 
@@ -632,6 +633,7 @@ async function loadBingo() {
   </script>
 </body>
 </html>
+
 
 
 
