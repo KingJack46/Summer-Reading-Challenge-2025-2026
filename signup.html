@@ -66,7 +66,7 @@
     document.getElementById('signupForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const user_name = document.getElementById('user_name').toLowerCase().value.trim();
+      const user_name = document.getElementById('user_name').value.trim();
       const password = document.getElementById('password').value.trim();
       const email_address = document.getElementById('email_address').value.trim() || null;
       const phone_number = document.getElementById('phone_number').value.trim() || null;
@@ -109,5 +109,6 @@
 
 </body>
 </html>
+
 
 
