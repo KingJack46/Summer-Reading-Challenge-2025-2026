@@ -437,6 +437,51 @@ async function getUserBingoState(username) {
   return state;
 }
 
+function countCurrentWins(state) {
+  let wins = 0;
+
+  // Rows
+  for (let r = 0; r < BINGO_SIZE; r++) {
+    if (state[r].every(v => v)) wins++;
+  }
+
+  // Columns
+  for (let c = 0; c < BINGO_SIZE; c++) {
+    if (state.every(row => row[c])) wins++;
+  }
+
+  // Diagonal TL → BR
+  if (state.every((row, i) => row[i])) wins++;
+
+  // Diagonal TR → BL
+  if (state.every((row, i) => row[BINGO_SIZE - 1 - i])) wins++;
+
+  return wins;
+}
+
+    async function getUserWinCount() {
+  const { data, error } = await supabase
+    .from('user_bingo_wins')
+    .select('win_count')
+    .eq('user_name', currentUser.user_name)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  return data?.win_count ?? 0;
+}
+
+    async function setUserWinCount(newCount) {
+  const { error } = await supabase
+    .from('user_bingo_wins')
+    .upsert({
+      user_name: currentUser.user_name,
+      win_count: newCount
+    });
+
+  if (error) throw error;
+}
+
 async function handleBingoClick(index, cell) {
   const row = Math.floor(index / BINGO_SIZE);
   const col = index % BINGO_SIZE;
@@ -649,6 +694,7 @@ async function loadBingo() {
   </script>
 </body>
 </html>
+
 
 
 
