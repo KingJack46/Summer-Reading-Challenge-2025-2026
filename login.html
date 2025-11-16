@@ -64,7 +64,7 @@
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const user_name = document.getElementById('user_name').value.trim();
+      const user_name = document.getElementById('user_name').toLowerCase().value.trim();
       const password = document.getElementById('password').value.trim();
 
       document.getElementById('message').textContent = 'Checking credentials...';
@@ -100,5 +100,6 @@
 
 </body>
 </html>
+
 
 
