@@ -447,7 +447,6 @@ async function handleBingoClick(index, cell) {
   const wasCompleted = userBingoState[row][col];
   const newCompleted = !wasCompleted;
 
-  // Update UI instantly
   userBingoState[row][col] = newCompleted;
   cell.classList.toggle('completed', newCompleted);
 
@@ -460,10 +459,7 @@ async function handleBingoClick(index, cell) {
       .eq('bingo_index', index)
       .limit(1);
 
-    if (selectError) {
-      console.error('Error selecting:', selectError);
-      throw selectError;
-    }
+    if (selectError) throw selectError;
 
     const rowExists = existing && existing.length > 0;
 
@@ -494,42 +490,63 @@ async function handleBingoClick(index, cell) {
       if (insertError) throw insertError;
     }
 
-    // Log minutes
+    // Log challenge bonus
     await logReadingMinutes(
       currentUser,
       newCompleted ? bonus : -bonus,
       `${newCompleted ? 'Bingo' : 'Unmark Bingo'}: ${challengeName}`
     );
 
-    // === CHECK FOR WIN ===
-    if (checkBingoWin(row, col)) {
-      alert(`Bingo! You earned an extra ${BINGO_WIN_BONUS} bonus minutes!`);
-      await logReadingMinutes(currentUser, BINGO_WIN_BONUS, 'Bingo Board Win');
+    // === CHECK ALL CURRENT WINS ===
+    const currentWins = countCurrentWins(userBingoState);
+    const previousWins = await getUserWinCount();
+
+    if (currentWins > previousWins) {
+      // Award escalating wins
+      let totalReward = 0;
+      for (let i = previousWins + 1; i <= currentWins; i++) {
+        totalReward += i * 5;
+      }
+
+      await logReadingMinutes(
+        currentUser,
+        totalReward,
+        `Bingo Wins Achieved: ${currentWins}`
+      );
+
+      alert(`🎉 You earned ${totalReward} bonus minutes for new Bingo wins!`);
     }
+
+    if (currentWins < previousWins) {
+      // Remove win rewards
+      let refund = 0;
+      for (let i = currentWins + 1; i <= previousWins; i++) {
+        refund += i * 5;
+      }
+
+      await logReadingMinutes(
+        currentUser,
+        -refund,
+        `Bingo Wins Revoked: Now ${currentWins}`
+      );
+
+      alert(`❌ Bingo broken! Removed ${refund} bonus minutes.`);
+    }
+
+    // Save updated win count
+    await setUserWinCount(currentWins);
 
   } catch (err) {
     console.error('Error handling bingo click:', err);
 
-    // Revert optimistic UI if backend failed
+    // Revert optimistic UI
     userBingoState[row][col] = wasCompleted;
     cell.classList.toggle('completed', wasCompleted);
 
-    // Optional: reload board for safety
     await loadBingo();
   }
 }
 
-function checkBingoWin(row, col) {
-  // Check row
-  if (userBingoState[row].every(val => val)) return true;
-  // Check column
-  if (userBingoState.every(r => r[col])) return true;
-  // Check diagonals
-  if (row === col && userBingoState.every((r, i) => r[i])) return true;
-  if (row + col === BINGO_SIZE - 1 && userBingoState.every((r, i) => r[BINGO_SIZE - 1 - i])) return true;
-
-  return false;
-}
 
 /* ========= LOAD BINGO ========= */
 async function loadBingo() {
@@ -632,6 +649,7 @@ async function loadBingo() {
   </script>
 </body>
 </html>
+
 
 
 
