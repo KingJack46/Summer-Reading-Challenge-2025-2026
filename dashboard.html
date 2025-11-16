@@ -437,55 +437,6 @@ async function getUserBingoState(username) {
   return state;
 }
 
-function countCurrentWins(state) {
-  let wins = 0;
-
-  // Rows
-  for (let r = 0; r < BINGO_SIZE; r++) {
-    if (state[r].every(v => v)) wins++;
-  }
-
-  // Columns
-  for (let c = 0; c < BINGO_SIZE; c++) {
-    if (state.every(row => row[c])) wins++;
-  }
-
-  // Diagonal TL → BR
-  if (state.every((row, i) => row[i])) wins++;
-
-  // Diagonal TR → BL
-  if (state.every((row, i) => row[BINGO_SIZE - 1 - i])) wins++;
-
-  return wins;
-}
-
-    async function getUserWinCount() {
-  const { data, error } = await supabase
-    .from('user_bingo_wins')
-    .select('win_count')
-    .eq('user_name', currentUser.user_name)
-    .limit(1);  // prevents PGRST116
-
-  if (error) throw error;
-
-  return data && data.length > 0 ? data[0].win_count : 0;
-}
-
-
-   async function setUserWinCount(newCount) {
-  const { error } = await supabase
-    .from('user_bingo_wins')
-    .upsert({
-      user_name: currentUser.user_name,
-      win_count: newCount
-    }, {
-      onConflict: 'user_name'
-    });
-
-  if (error) throw error;
-}
-
-
 async function handleBingoClick(index, cell) {
   const row = Math.floor(index / BINGO_SIZE);
   const col = index % BINGO_SIZE;
@@ -496,6 +447,7 @@ async function handleBingoClick(index, cell) {
   const wasCompleted = userBingoState[row][col];
   const newCompleted = !wasCompleted;
 
+  // Update UI instantly
   userBingoState[row][col] = newCompleted;
   cell.classList.toggle('completed', newCompleted);
 
@@ -508,7 +460,10 @@ async function handleBingoClick(index, cell) {
       .eq('bingo_index', index)
       .limit(1);
 
-    if (selectError) throw selectError;
+    if (selectError) {
+      console.error('Error selecting:', selectError);
+      throw selectError;
+    }
 
     const rowExists = existing && existing.length > 0;
 
@@ -528,75 +483,53 @@ async function handleBingoClick(index, cell) {
     } else {
       // --- INSERT ---
       const { error: insertError } = await supabase
-  .from('user_bingo_state')
-  .insert([{
-    user_name: currentUser.user_name,
-    bingo_index: index,
-    completed: newCompleted,
-    completed_at: newCompleted ? new Date().toISOString() : null
-  }]);
-
+        .from('user_bingo_state')
+        .insert([{
+          user_name: currentUser.user_name,
+          bingo_index: index,
+          completed: true,
+          completed_at: new Date().toISOString()
+        }]);
 
       if (insertError) throw insertError;
     }
 
-    // Log challenge bonus
+    // Log minutes
     await logReadingMinutes(
       currentUser,
       newCompleted ? bonus : -bonus,
       `${newCompleted ? 'Bingo' : 'Unmark Bingo'}: ${challengeName}`
     );
 
-    // === CHECK ALL CURRENT WINS ===
-    const currentWins = countCurrentWins(userBingoState);
-    const previousWins = await getUserWinCount();
-
-    if (currentWins > previousWins) {
-      // Award escalating wins
-      let totalReward = 0;
-      for (let i = previousWins + 1; i <= currentWins; i++) {
-        totalReward += i * 5;
-      }
-
-      await logReadingMinutes(
-        currentUser,
-        totalReward,
-        `Bingo Wins Achieved: ${currentWins}`
-      );
-
-      alert(`🎉 You earned ${totalReward} bonus minutes for new Bingo wins!`);
+    // === CHECK FOR WIN ===
+    if (checkBingoWin(row, col)) {
+      alert(`Bingo! You earned an extra ${BINGO_WIN_BONUS} bonus minutes!`);
+      await logReadingMinutes(currentUser, BINGO_WIN_BONUS, 'Bingo Board Win');
     }
-
-    if (currentWins < previousWins) {
-      // Remove win rewards
-      let refund = 0;
-      for (let i = currentWins + 1; i <= previousWins; i++) {
-        refund += i * 5;
-      }
-
-      await logReadingMinutes(
-        currentUser,
-        -refund,
-        `Bingo Wins Revoked: Now ${currentWins}`
-      );
-
-      alert(`❌ Bingo broken! Removed ${refund} bonus minutes.`);
-    }
-
-    // Save updated win count
-    await setUserWinCount(currentWins);
 
   } catch (err) {
     console.error('Error handling bingo click:', err);
 
-    // Revert optimistic UI
+    // Revert optimistic UI if backend failed
     userBingoState[row][col] = wasCompleted;
     cell.classList.toggle('completed', wasCompleted);
 
+    // Optional: reload board for safety
     await loadBingo();
   }
 }
 
+function checkBingoWin(row, col) {
+  // Check row
+  if (userBingoState[row].every(val => val)) return true;
+  // Check column
+  if (userBingoState.every(r => r[col])) return true;
+  // Check diagonals
+  if (row === col && userBingoState.every((r, i) => r[i])) return true;
+  if (row + col === BINGO_SIZE - 1 && userBingoState.every((r, i) => r[BINGO_SIZE - 1 - i])) return true;
+
+  return false;
+}
 
 /* ========= LOAD BINGO ========= */
 async function loadBingo() {
@@ -699,10 +632,6 @@ async function loadBingo() {
   </script>
 </body>
 </html>
-
-
-
-
 
 
 
