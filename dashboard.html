@@ -464,23 +464,27 @@ function countCurrentWins(state) {
     .from('user_bingo_wins')
     .select('win_count')
     .eq('user_name', currentUser.user_name)
-    .maybeSingle();
+    .limit(1);  // prevents PGRST116
 
   if (error) throw error;
 
-  return data?.win_count ?? 0;
+  return data && data.length > 0 ? data[0].win_count : 0;
 }
 
-    async function setUserWinCount(newCount) {
+
+   async function setUserWinCount(newCount) {
   const { error } = await supabase
     .from('user_bingo_wins')
     .upsert({
       user_name: currentUser.user_name,
       win_count: newCount
+    }, {
+      onConflict: 'user_name'
     });
 
   if (error) throw error;
 }
+
 
 async function handleBingoClick(index, cell) {
   const row = Math.floor(index / BINGO_SIZE);
@@ -524,13 +528,14 @@ async function handleBingoClick(index, cell) {
     } else {
       // --- INSERT ---
       const { error: insertError } = await supabase
-        .from('user_bingo_state')
-        .insert([{
-          user_name: currentUser.user_name,
-          bingo_index: index,
-          completed: true,
-          completed_at: new Date().toISOString()
-        }]);
+  .from('user_bingo_state')
+  .insert([{
+    user_name: currentUser.user_name,
+    bingo_index: index,
+    completed: newCompleted,
+    completed_at: newCompleted ? new Date().toISOString() : null
+  }]);
+
 
       if (insertError) throw insertError;
     }
@@ -694,6 +699,7 @@ async function loadBingo() {
   </script>
 </body>
 </html>
+
 
 
 
