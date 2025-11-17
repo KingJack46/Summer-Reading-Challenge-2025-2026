@@ -63,8 +63,10 @@
 
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-
-      const user_name = document.getElementById('user_name').value.trim().toLowerCase();
+      //lower case for login purposes
+      const user_namelwr = document.getElementById('user_name').value.trim().toLowerCase();
+      //Actual username for get request in supabase
+      const user_name = document.getElementById('user_name').value.trim();
       const password = document.getElementById('password').value.trim();
 
       document.getElementById('message').textContent = 'Checking credentials...';
@@ -73,7 +75,7 @@
         const { data, error } = await supabase
           .from('Userdetails')
           .select('*')
-          .ilike('user_name', user_name)
+          .ilike('user_name', user_namelwr)
           .eq('password', password)
           .limit(1)
           .single();
@@ -100,6 +102,7 @@
 
 </body>
 </html>
+
 
 
 
