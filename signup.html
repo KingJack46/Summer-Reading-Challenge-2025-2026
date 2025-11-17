@@ -59,56 +59,68 @@
   <div id="message"></div>
 
   <script>
-    const SUPABASE_URL = 'https://hfugnpqguidgosxyuioj.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdWducHFndWlkZ29zeHl1aW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NjE3ODAsImV4cCI6MjA3ODAzNzc4MH0.eawP-KaZTXOAE_OSYeJR6Ds_c6aKsqOsXo_EGifgtrU'; // replace with your anon key
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL = 'https://hfugnpqguidgosxyuioj.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdWducHFndWlkZ29zeHl1aW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NjE3ODAsImV4cCI6MjA3ODAzNzc4MH0.eawP-KaZTXOAE_OSYeJR6Ds_c6aKsqOsXo_EGifgtrU'; 
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    document.getElementById('signupForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+document.getElementById('signupForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
 
-      const user_name = document.getElementById('user_name').value.trim();
-      const password = document.getElementById('password').value.trim();
-      const email_address = document.getElementById('email_address').value.trim() || null;
-      const phone_number = document.getElementById('phone_number').value.trim() || null;
+  const user_name = document.getElementById('user_name').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const email_address = document.getElementById('email_address').value.trim() || null;
+  const phone_number = document.getElementById('phone_number').value.trim() || null;
 
-      if (!email_address && !phone_number) {
-        document.getElementById('message').textContent =
-          'Please provide either an email address or phone number.';
-        return;
-      }
+  if (!email_address && !phone_number) {
+    document.getElementById('message').textContent =
+      'Please provide either an email address or phone number.';
+    return;
+  }
 
-      document.getElementById('message').textContent = 'Creating your account...';
+  document.getElementById('message').textContent = 'Checking username availability...';
 
-      try {
-        const { data, error } = await supabase
-          .from('Userdetails')
-          .insert([{
-            user_name,
-            password,
-            email_address,
-            phone_number,
-            last_login: new Date().toISOString(),
-            minutes_logged: 0
-          }]);
+  try {
+    // Case-insensitive check for existing username
+    const { data: existingUsers, error: fetchError } = await supabase
+      .from('Userdetails')
+      .select('user_name')
+      .ilike('user_name', user_name); // ilike is case-insensitive
 
-        if (error) {
-          if (error.code === '23505') {
-            throw new Error('That username is already taken. Please choose another.');
-          }
-          throw error;
-        }
+    if (fetchError) throw fetchError;
 
-        document.getElementById('message').textContent = 'Signup successful! Redirecting...';
-        setTimeout(() => window.location.href = 'login.html', 1500);
+    if (existingUsers.length > 0) {
+      document.getElementById('message').textContent =
+        'That username is already taken. Please choose another.';
+      return;
+    }
 
-      } catch (err) {
-        document.getElementById('message').textContent = 'Error: ' + err.message;
-      }
-    });
-  </script>
+    // Insert new user
+    const { data, error } = await supabase
+      .from('Userdetails')
+      .insert([{
+        user_name,  // keep original case for display
+        password,
+        email_address,
+        phone_number,
+        last_login: new Date().toISOString(),
+        minutes_logged: 0
+      }]);
+
+    if (error) throw error;
+
+    document.getElementById('message').textContent = 'Signup successful! Redirecting...';
+    setTimeout(() => window.location.href = 'login.html', 1500);
+
+  } catch (err) {
+    document.getElementById('message').textContent = 'Error: ' + err.message;
+  }
+});
+</script>
+
 
 </body>
 </html>
+
 
 
 
