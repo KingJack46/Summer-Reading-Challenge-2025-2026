@@ -274,7 +274,7 @@
     }
 
     async function getUserLogs(username) {
-      const { data, error } = await supabase.from('loghistory').select('minutes_logged').eq('user_name', username);
+      const { data, error } = await supabase.from('loghistory').select('minutes_logged').ilike('user_name', username);
       if (error) throw error;
       return data;
     }
@@ -372,7 +372,7 @@
       const totalUserMinutes = userLogs.reduce((s, e) => s + e.minutes_logged, 0);
       renderUserMinutes(totalUserMinutes);
 
-      await supabase.from('Userdetails').update({ minutes_logged: totalUserMinutes }).eq('user_name', username);
+      await supabase.from('Userdetails').update({ minutes_logged: totalUserMinutes }).ilike('user_name', username);
 
       const allUsers = await getAllUsers();
       renderLeaderboard(allUsers);
@@ -421,7 +421,7 @@ async function getUserBingoState(username) {
   const { data, error } = await supabase
     .from('user_bingo_state')
     .select('*')
-    .eq('user_name', username);
+    .ilike('user_name', username);
 
   if (error) throw error;
 
@@ -634,6 +634,7 @@ async function loadBingo() {
   </script>
 </body>
 </html>
+
 
 
 
