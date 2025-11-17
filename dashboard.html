@@ -448,15 +448,15 @@ async function handleBingoClick(index, cell) {
   const wasCompleted = userBingoState[row][col];
   const newCompleted = !wasCompleted;
 
-  // --- Check if user had any bingo before the click ---
+  // ---- MUST BE BEFORE TOGGLE ----
   const hadBingoBefore = checkAnyBingo();
 
-  // Optimistic UI
+  // Optimistic UI update
   userBingoState[row][col] = newCompleted;
   cell.classList.toggle('completed', newCompleted);
 
   try {
-    // DB logic unchanged...
+    // Update DB row
     const { data: existing } = await supabase
       .from('user_bingo_state')
       .select('*')
@@ -464,7 +464,7 @@ async function handleBingoClick(index, cell) {
       .eq('bingo_index', index)
       .limit(1);
 
-    if (existing && existing.length) {
+    if (existing && existing.length > 0) {
       await supabase
         .from('user_bingo_state')
         .update({
@@ -473,42 +473,41 @@ async function handleBingoClick(index, cell) {
         })
         .eq('user_name', currentUser.user_name)
         .eq('bingo_index', index);
-
     } else {
-      await supabase.from('user_bingo_state').insert([{
-        user_name: currentUser.user_name,
-        bingo_index: index,
-        completed: true,
-        completed_at: new Date().toISOString()
-      }]);
+      await supabase
+        .from('user_bingo_state')
+        .insert([{
+          user_name: currentUser.user_name,
+          bingo_index: index,
+          completed: true,
+          completed_at: new Date().toISOString()
+        }]);
     }
 
-    // Log square’s own minutes
+    // Square bonus / unbonus
     await logReadingMinutes(
       currentUser,
       newCompleted ? bonus : -bonus,
-      `${newCompleted ? 'Bingo' : 'Unmark Bingo'}: ${challengeName}`
+      `${newCompleted ? "Bingo" : "Unmark Bingo"}: ${challengeName}`
     );
 
-    // --- Check bingo state after the click ---
+    // ---- MUST BE AFTER TOGGLE ----
     const hasBingoAfter = checkAnyBingo();
 
-    // NEW BINGO
+    // Win awarded
     if (!hadBingoBefore && hasBingoAfter) {
-      alert(`Bingo! You earned an extra ${BINGO_WIN_BONUS} bonus minutes!`);
-      await logReadingMinutes(currentUser, BINGO_WIN_BONUS, 'Bingo Board Win');
+      await logReadingMinutes(currentUser, BINGO_WIN_BONUS, "Bingo Board Win");
     }
 
-    // BINGO WAS BROKEN → REVERT BONUS
+    // Win reverted
     if (hadBingoBefore && !hasBingoAfter) {
-      alert(`A bingo was broken. Removing ${BINGO_WIN_BONUS} bonus minutes.`);
-      await logReadingMinutes(currentUser, -BINGO_WIN_BONUS, 'Bingo Board Win Reverted');
+      await logReadingMinutes(currentUser, -BINGO_WIN_BONUS, "Bingo Board Win Reverted");
     }
 
   } catch (err) {
     console.error(err);
     userBingoState[row][col] = wasCompleted;
-    cell.classList.toggle('completed', wasCompleted);
+    cell.classList.toggle("completed", wasCompleted);
     await loadBingo();
   }
 }
@@ -642,6 +641,7 @@ async function loadBingo() {
   </script>
 </body>
 </html>
+
 
 
 
