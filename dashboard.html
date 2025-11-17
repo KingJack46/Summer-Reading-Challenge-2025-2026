@@ -268,7 +268,7 @@
 
     /* ========= SUPABASE HELPERS ========= */
     async function getUserData(username) {
-      const { data, error } = await supabase.from('Userdetails').select('*').eq('user_name', username).single();
+      const { data, error } = await supabase.from('Userdetails').select('*').ilike('user_name', username).single();
       if (error) throw error;
       return data;
     }
@@ -634,6 +634,7 @@ async function loadBingo() {
   </script>
 </body>
 </html>
+
 
 
 
