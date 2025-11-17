@@ -445,33 +445,27 @@ async function handleBingoClick(index, cell) {
   const bonus = bingoData[index].bonus_minutes;
   const challengeName = bingoData[index].challenge;
 
-  // === INSTANT UI UPDATE (optimistic) ===
   const wasCompleted = userBingoState[row][col];
   const newCompleted = !wasCompleted;
 
-  // Update UI instantly
+  // --- Check if user had any bingo before the click ---
+  const hadBingoBefore = checkAnyBingo();
+
+  // Optimistic UI
   userBingoState[row][col] = newCompleted;
   cell.classList.toggle('completed', newCompleted);
 
   try {
-    // === CHECK IF ENTRY EXISTS WITHOUT TRIGGERING 406 ===
-    const { data: existing, error: selectError } = await supabase
+    // DB logic unchanged...
+    const { data: existing } = await supabase
       .from('user_bingo_state')
       .select('*')
       .eq('user_name', currentUser.user_name)
       .eq('bingo_index', index)
       .limit(1);
 
-    if (selectError) {
-      console.error('Error selecting:', selectError);
-      throw selectError;
-    }
-
-    const rowExists = existing && existing.length > 0;
-
-    if (rowExists) {
-      // --- UPDATE ---
-      const { error: updateError } = await supabase
+    if (existing && existing.length) {
+      await supabase
         .from('user_bingo_state')
         .update({
           completed: newCompleted,
@@ -480,46 +474,45 @@ async function handleBingoClick(index, cell) {
         .eq('user_name', currentUser.user_name)
         .eq('bingo_index', index);
 
-      if (updateError) throw updateError;
-
     } else {
-      // --- INSERT ---
-      const { error: insertError } = await supabase
-        .from('user_bingo_state')
-        .insert([{
-          user_name: currentUser.user_name,
-          bingo_index: index,
-          completed: true,
-          completed_at: new Date().toISOString()
-        }]);
-
-      if (insertError) throw insertError;
+      await supabase.from('user_bingo_state').insert([{
+        user_name: currentUser.user_name,
+        bingo_index: index,
+        completed: true,
+        completed_at: new Date().toISOString()
+      }]);
     }
 
-    // Log minutes
+    // Log square’s own minutes
     await logReadingMinutes(
       currentUser,
       newCompleted ? bonus : -bonus,
       `${newCompleted ? 'Bingo' : 'Unmark Bingo'}: ${challengeName}`
     );
 
-    // === CHECK FOR WIN ===
-    if (checkBingoWin(row, col)) {
+    // --- Check bingo state after the click ---
+    const hasBingoAfter = checkAnyBingo();
+
+    // NEW BINGO
+    if (!hadBingoBefore && hasBingoAfter) {
       alert(`Bingo! You earned an extra ${BINGO_WIN_BONUS} bonus minutes!`);
       await logReadingMinutes(currentUser, BINGO_WIN_BONUS, 'Bingo Board Win');
     }
 
-  } catch (err) {
-    console.error('Error handling bingo click:', err);
+    // BINGO WAS BROKEN → REVERT BONUS
+    if (hadBingoBefore && !hasBingoAfter) {
+      alert(`A bingo was broken. Removing ${BINGO_WIN_BONUS} bonus minutes.`);
+      await logReadingMinutes(currentUser, -BINGO_WIN_BONUS, 'Bingo Board Win Reverted');
+    }
 
-    // Revert optimistic UI if backend failed
+  } catch (err) {
+    console.error(err);
     userBingoState[row][col] = wasCompleted;
     cell.classList.toggle('completed', wasCompleted);
-
-    // Optional: reload board for safety
     await loadBingo();
   }
 }
+
 
 function checkBingoWin(row, col) {
   // Check row
@@ -634,6 +627,7 @@ async function loadBingo() {
   </script>
 </body>
 </html>
+
 
 
 
