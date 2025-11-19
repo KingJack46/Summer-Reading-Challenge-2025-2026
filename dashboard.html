@@ -242,21 +242,28 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-
   width: 90%;
-  height: 90%;
-  padding: 6px;
-
-  font-size: 20px;
-  line-height: 1.2;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: #8c5328;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: normal;
   overflow: hidden;
+  display: block;
 }
+
+/* Allow scaling down */
+.bingo-text-small {
+  font-size: 3vw;
+}
+
+@media (min-width: 900px) {
+  .bingo-text-small {
+    font-size: 20px;
+  }
+}
+
 
 
 /* Confetti container */
@@ -708,6 +715,7 @@ function launchConfetti() {
   animate();
 }
 
+
 /* Hook into your bingo win condition */
 const originalHandleBingoClick = handleBingoClick;
 handleBingoClick = async function(index, cell) {
@@ -804,6 +812,7 @@ handleBingoClick = async function(index, cell) {
   </script>
 </body>
 </html>
+
 
 
 
