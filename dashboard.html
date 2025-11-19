@@ -245,6 +245,18 @@
   transform: translate(-50%, -50%);
   padding: 6px;
 }
+/* Auto-fit text inside bingo tiles */
+#bingoBoard div span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 90%;
+  height: 90%;
+  font-size: 16px; /* starting size */
+  line-height: 1.2;
+  overflow: hidden;
+}
 
 /* Confetti container */
 #confettiCanvas {
@@ -314,7 +326,7 @@
   <h3>Summer Reading Bingo</h3>
   <p>Get 5 in a row to get bingo or fill the page!</p>
 
-  //<div id="bingoBoard"></div>
+  <div id="bingoBoard"></div>
 </section>
 <canvas id="confettiCanvas"></canvas>
 
@@ -431,6 +443,21 @@
         container.append(line, label);
       });
     }
+    /* Auto-resize text inside a cell until it fits */
+function autoFitText(el) {
+  let size = 16; // starting size
+  el.style.fontSize = size + "px";
+
+  const parent = el.parentElement;
+  const maxWidth = parent.clientWidth * 0.85;
+  const maxHeight = parent.clientHeight * 0.85;
+
+  while ((el.scrollHeight > maxHeight || el.scrollWidth > maxWidth) && size > 6) {
+    size--;
+    el.style.fontSize = size + "px";
+  }
+}
+
 
     /* ========= DASHBOARD LOADER ========= */
     async function loadDashboard() {
@@ -501,6 +528,8 @@ function renderBingoBoard(challenges) {
     const span = document.createElement("span");
     span.textContent = item.challenge;
     cell.appendChild(span);
+    setTimeout(() => autoFitText(span), 10);
+
 
     const row = Math.floor(index / BINGO_SIZE);
     const col = index % BINGO_SIZE;
@@ -641,33 +670,53 @@ window.addEventListener("resize", resizeConfetti);
 function launchConfetti() {
   const confetti = [];
   const colors = ["#ff8b2e", "#ffd54f", "#1cb8ff", "#ff6f91", "#45e1ff"];
+  const duration = 2500; // 2.5 seconds
+  const endTime = Date.now() + duration;
 
-  for (let i = 0; i < 150; i++) {
+  // Create rectangular confetti launched from bottom-left & bottom-right
+  for (let i = 0; i < 180; i++) {
+    const side = i % 2 === 0 ? "left" : "right";
+
     confetti.push({
-      x: Math.random() * confettiCanvas.width,
-      y: Math.random() * confettiCanvas.height - confettiCanvas.height,
-      r: Math.random() * 6 + 4,
+      x: side === "left" ? 0 : confettiCanvas.width,
+      y: confettiCanvas.height,
+      w: Math.random() * 8 + 4,
+      h: Math.random() * 12 + 6,
       c: colors[Math.floor(Math.random() * colors.length)],
-      s: Math.random() * 3 + 2
+      vx: side === "left" ? (Math.random() * 4 + 2) : -(Math.random() * 4 + 2),
+      vy: -(Math.random() * 6 + 7), // shoot upward
+      gravity: 0.18 + Math.random() * 0.12,
+      rotation: Math.random() * 360,
+      vrot: Math.random() * 10 - 5
     });
   }
 
   function animate() {
     ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+
     confetti.forEach(p => {
-      p.y += p.s;
-      if (p.y > confettiCanvas.height) p.y = -20;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += p.gravity;
+
+      p.rotation += p.vrot;
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate((p.rotation * Math.PI) / 180);
       ctx.fillStyle = p.c;
-      ctx.fill();
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
     });
-    requestAnimationFrame(animate);
+
+    if (Date.now() < endTime) {
+      requestAnimationFrame(animate);
+    } else {
+      ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+    }
   }
 
   animate();
-
-  setTimeout(() => ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height), 4000);
 }
 
 /* Hook into your bingo win condition */
@@ -766,6 +815,7 @@ handleBingoClick = async function(index, cell) {
   </script>
 </body>
 </html>
+
 
 
 
