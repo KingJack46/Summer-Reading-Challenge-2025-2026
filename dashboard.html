@@ -444,19 +444,29 @@
       });
     }
     /* Auto-resize text inside a cell until it fits */
-function autoFitText(el) {
-  let size = 16; // starting size
-  el.style.fontSize = size + "px";
+function autoFitText(spanEl) {
+  const parent = spanEl.parentElement;
 
-  const parent = el.parentElement;
-  const maxWidth = parent.clientWidth * 0.85;
-  const maxHeight = parent.clientHeight * 0.85;
+  // If already resized once, skip permanently
+  if (spanEl.dataset.fitted === "true") return;
 
-  while ((el.scrollHeight > maxHeight || el.scrollWidth > maxWidth) && size > 6) {
+  // Starting size based on your CSS
+  let size = 16;
+  spanEl.style.fontSize = size + "px";
+
+  const maxW = parent.clientWidth * 0.85;
+  const maxH = parent.clientHeight * 0.85;
+
+  // Only shrink while text exceeds bounds
+  while (size > 6 && (spanEl.scrollHeight > maxH || spanEl.scrollWidth > maxW)) {
     size--;
-    el.style.fontSize = size + "px";
+    spanEl.style.fontSize = size + "px";
   }
+
+  // Mark as permanently done
+  spanEl.dataset.fitted = "true";
 }
+
 
 
     /* ========= DASHBOARD LOADER ========= */
@@ -527,8 +537,11 @@ function renderBingoBoard(challenges) {
     const cell = document.createElement("div");
     const span = document.createElement("span");
     span.textContent = item.challenge;
-    cell.appendChild(span);
-    setTimeout(() => autoFitText(span), 10);
+  cell.appendChild(span);
+
+  // Auto-fit only once when board first loads
+  requestAnimationFrame(() => autoFitText(span));
+
 
 
     const row = Math.floor(index / BINGO_SIZE);
@@ -815,6 +828,7 @@ handleBingoClick = async function(index, cell) {
   </script>
 </body>
 </html>
+
 
 
 
