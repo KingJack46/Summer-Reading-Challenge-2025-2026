@@ -445,30 +445,44 @@
     }
     /* Auto-resize text inside a cell until it fits */
 /* Auto-fit text inside a bingo cell after layout settles */
+/* ===============================
+   RESPONSIVE AUTO-FIT TEXT ENGINE
+   =============================== */
+
 function autoFitText(el) {
-  // Wait for layout to finish (square height becomes known)
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
+  const parent = el.parentElement;
 
-      let size = 28;         // starting font size
-      el.style.fontSize = size + "px";
+  let min = 8;   // minimum readable size
+  let max = 40;  // max size for large screens
+  let size = max;
 
-      const parent = el.parentElement;
+  // binary-search for the ideal size (MUCH faster than decrement loops)
+  function fits(fontSize) {
+    el.style.fontSize = fontSize + "px";
+    return (
+      el.scrollWidth <= parent.clientWidth * 0.90 &&
+      el.scrollHeight <= parent.clientHeight * 0.90
+    );
+  }
 
-      function fits() {
-        return (
-          el.scrollWidth <= parent.clientWidth * 0.85 &&
-          el.scrollHeight <= parent.clientHeight * 0.85
-        );
-      }
+  // binary search (fast + smooth)
+  while (min <= max) {
+    let mid = Math.floor((min + max) / 2);
+    if (fits(mid)) {
+      size = mid;
+      min = mid + 1; // try bigger
+    } else {
+      max = mid - 1; // too big → shrink
+    }
+  }
 
-      // Reduce font size until it fits
-      while (!fits() && size > 8) {
-        size--;
-        el.style.fontSize = size + "px";
-      }
-    });
-  });
+  el.style.fontSize = size + "px";
+}
+
+/* Re-fit all bingo tiles */
+function autoFitAllBingoText() {
+  const spans = document.querySelectorAll("#bingoBoard div span");
+  spans.forEach(span => autoFitText(span));
 }
 
 
@@ -541,7 +555,7 @@ function renderBingoBoard(challenges) {
     const span = document.createElement("span");
     span.textContent = item.challenge;
     cell.appendChild(span);
-    autoFitText(span);
+    requestAnimationFrame(() => autoFitText(span));
 
 
     const row = Math.floor(index / BINGO_SIZE);
@@ -753,6 +767,15 @@ handleBingoClick = async function(index, cell) {
       const dropdown = document.getElementById('profileDropdown');
       dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
     });
+    /* Dynamic resizing: phones, tablets, desktop */
+    window.addEventListener("resize", () => {
+    autoFitAllBingoText();
+  });
+
+  window.addEventListener("orientationchange", () => {
+  setTimeout(autoFitAllBingoText, 200); // allow rotation to settle
+});
+
 
     document.addEventListener('click', e => {
       if (!document.getElementById('profileIcon').contains(e.target))
@@ -828,6 +851,7 @@ handleBingoClick = async function(index, cell) {
   </script>
 </body>
 </html>
+
 
 
 
