@@ -253,7 +253,7 @@
   text-align: center;
   width: 90%;
   height: 90%;
-  font-size: 32px; /* starting size */
+  font-size: 64px; /* starting size */
   line-height: 1.2;
   overflow: hidden;
 }
@@ -449,7 +449,7 @@ function autoFitText(spanEl) {
 
   if (spanEl.dataset.fitted === "true") return;
 
-  let size = 32;   // << start big
+  let size = 64;   // << start big
   spanEl.style.fontSize = size + "px";
 
   const maxW = parent.clientWidth * 0.85;
@@ -826,6 +826,7 @@ handleBingoClick = async function(index, cell) {
   </script>
 </body>
 </html>
+
 
 
 
