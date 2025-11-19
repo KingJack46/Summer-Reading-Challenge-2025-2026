@@ -382,52 +382,31 @@
       await loadBingo();
     }
 
-    /* ========= BINGO LOGIC ========= */
+/* ========= BINGO LOGIC (FIXED) ========= */
 const BINGO_SIZE = 5;
-let bingoData = []; // [{challenge, bonus}]
+let bingoData = [];
 let userBingoState = Array(BINGO_SIZE).fill(null).map(() => Array(BINGO_SIZE).fill(false));
-let BINGO_WIN_BONUS = 20; // default, can come from backend
+let BINGO_WIN_BONUS = 20;
 
+/* Load Bingo Challenges */
 async function getBingoData() {
-  // Replace 'bingochallenges' with your backend table name
-  const { data, error } = await supabase.from('bingochallenges').select('*');
+  const { data, error } = await supabase.from("bingochallenges").select("*");
   if (error) throw error;
-  return data; 
+  return data;
 }
 
-function renderBingoBoard(challenges) {
-  const board = document.getElementById('bingoBoard');
-  board.innerHTML = '';
-  bingoData = challenges;
-
-  challenges.forEach((item, index) => {
-    const cell = document.createElement('div');
-    const span = document.createElement('span');
-    span.textContent = item.challenge;
-    cell.appendChild(span);
-
-    const row = Math.floor(index / BINGO_SIZE);
-    const col = index % BINGO_SIZE;
-
-    if (userBingoState[row][col]) cell.classList.add('completed');
-
-    cell.addEventListener('click', async () => handleBingoClick(index, cell));
-    board.appendChild(cell);
-  });
-}
-
+/* Load User Bingo State */
 async function getUserBingoState(username) {
   const { data, error } = await supabase
-    .from('user_bingo_state')
-    .select('*')
-    .ilike('user_name', username);
+    .from("user_bingo_state")
+    .select("*")
+    .ilike("user_name", username);
 
   if (error) throw error;
 
-  // initialize empty 5x5 array
   const state = Array(BINGO_SIZE).fill(null).map(() => Array(BINGO_SIZE).fill(false));
 
-  if (data && data.length) {
+  if (data) {
     data.forEach(row => {
       const r = Math.floor(row.bingo_index / BINGO_SIZE);
       const c = row.bingo_index % BINGO_SIZE;
@@ -438,110 +417,143 @@ async function getUserBingoState(username) {
   return state;
 }
 
+/* Render bingo board */
+function renderBingoBoard(challenges) {
+  const board = document.getElementById("bingoBoard");
+  board.innerHTML = "";
+  bingoData = challenges;
+
+  challenges.forEach((item, index) => {
+    const cell = document.createElement("div");
+    const span = document.createElement("span");
+    span.textContent = item.challenge;
+    cell.appendChild(span);
+
+    const row = Math.floor(index / BINGO_SIZE);
+    const col = index % BINGO_SIZE;
+
+    if (userBingoState[row][col]) cell.classList.add("completed");
+
+    cell.addEventListener("click", () => handleBingoClick(index, cell));
+    board.appendChild(cell);
+  });
+}
+
+/* Utility: check ANY bingo on arbitrary board state */
+function checkAnyBingo(state) {
+  // rows
+  for (let r = 0; r < BINGO_SIZE; r++) {
+    if (state[r].every(v => v)) return true;
+  }
+  // columns
+  for (let c = 0; c < BINGO_SIZE; c++) {
+    if (state.every(row => row[c])) return true;
+  }
+  // diagonal TL → BR
+  if (state.every((row, i) => row[i])) return true;
+  // diagonal TR → BL
+  if (state.every((row, i) => row[BINGO_SIZE - 1 - i])) return true;
+
+  return false;
+}
+
+/* Handle Bingo Toggle (FIXED) */
 async function handleBingoClick(index, cell) {
   const row = Math.floor(index / BINGO_SIZE);
   const col = index % BINGO_SIZE;
   const bonus = bingoData[index].bonus_minutes;
   const challengeName = bingoData[index].challenge;
 
+  /* Deep clone previous state to compare before/after state */
+  const prevState = JSON.parse(JSON.stringify(userBingoState));
+
   const wasCompleted = userBingoState[row][col];
   const newCompleted = !wasCompleted;
 
-  // ---- MUST BE BEFORE TOGGLE ----
-  const hadBingoBefore = checkAnyBingo();
-
-  // Optimistic UI update
+  /* Optimistic UI update */
   userBingoState[row][col] = newCompleted;
-  cell.classList.toggle('completed', newCompleted);
+  cell.classList.toggle("completed", newCompleted);
+
+  /* Compute bingo BEFORE and AFTER toggle (correct way!) */
+  const hadBingoBefore = checkAnyBingo(prevState);
+  const hasBingoAfter = checkAnyBingo(userBingoState);
 
   try {
-    // Update DB row
+    /* DB Sync: upsert row */
     const { data: existing } = await supabase
-      .from('user_bingo_state')
-      .select('*')
-      .eq('user_name', currentUser.user_name)
-      .eq('bingo_index', index)
+      .from("user_bingo_state")
+      .select("*")
+      .eq("user_name", currentUser.user_name)
+      .eq("bingo_index", index)
       .limit(1);
 
     if (existing && existing.length > 0) {
       await supabase
-        .from('user_bingo_state')
+        .from("user_bingo_state")
         .update({
           completed: newCompleted,
           completed_at: newCompleted ? new Date().toISOString() : null
         })
-        .eq('user_name', currentUser.user_name)
-        .eq('bingo_index', index);
+        .eq("user_name", currentUser.user_name)
+        .eq("bingo_index", index);
     } else {
-      await supabase
-        .from('user_bingo_state')
-        .insert([{
+      await supabase.from("user_bingo_state").insert([
+        {
           user_name: currentUser.user_name,
           bingo_index: index,
           completed: true,
           completed_at: new Date().toISOString()
-        }]);
+        }
+      ]);
     }
 
-    // Square bonus / unbonus
+    /* Award or remove square bonus */
     await logReadingMinutes(
       currentUser,
       newCompleted ? bonus : -bonus,
       `${newCompleted ? "Bingo" : "Unmark Bingo"}: ${challengeName}`
     );
 
-    // ---- MUST BE AFTER TOGGLE ----
-    const hasBingoAfter = checkAnyBingo();
-
-    // Win awarded
+    /* Award bingo win */
     if (!hadBingoBefore && hasBingoAfter) {
       await logReadingMinutes(currentUser, BINGO_WIN_BONUS, "Bingo Board Win");
     }
 
-    // Win reverted
+    /* Remove bingo win */
     if (hadBingoBefore && !hasBingoAfter) {
       await logReadingMinutes(currentUser, -BINGO_WIN_BONUS, "Bingo Board Win Reverted");
     }
 
   } catch (err) {
     console.error(err);
+
+    /* Rollback on error */
     userBingoState[row][col] = wasCompleted;
     cell.classList.toggle("completed", wasCompleted);
+
+    /* Reload to guarantee correct state */
     await loadBingo();
   }
 }
 
-function checkBingoWin(row, col) {
-  // Check row
-  if (userBingoState[row].every(val => val)) return true;
-  // Check column
-  if (userBingoState.every(r => r[col])) return true;
-  // Check diagonals
-  if (row === col && userBingoState.every((r, i) => r[i])) return true;
-  if (row + col === BINGO_SIZE - 1 && userBingoState.every((r, i) => r[BINGO_SIZE - 1 - i])) return true;
-
-  return false;
-}
-
-/* ========= LOAD BINGO ========= */
+/* Load bingo (unchanged) */
 async function loadBingo() {
   try {
     const data = await getBingoData();
     if (!data || data.length < 25) {
-      console.warn('Not enough bingo challenges. Fill at least 25 entries in the backend.');
+      console.warn("Not enough bingo challenges.");
       return;
     }
 
-    BINGO_WIN_BONUS = data.find(d => d.type === 'win_bonus')?.bonus_minutes || 20;
+    BINGO_WIN_BONUS = data.find(d => d.type === "win_bonus")?.bonus_minutes || 20;
 
-    // Load user's saved progress
     userBingoState = await getUserBingoState(currentUser.user_name);
-
     renderBingoBoard(data.slice(0, 25));
   } catch (err) {
-    console.error('Error loading bingo:', err.message);
+    console.error("Error loading bingo:", err.message);
   }
 }
+
 
     function checkAnyBingo() {
   // check rows
@@ -640,6 +652,7 @@ async function loadBingo() {
   </script>
 </body>
 </html>
+
 
 
 
