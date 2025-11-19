@@ -253,7 +253,7 @@
   height: 90%;
   padding: 6px;
 
-  font-size: 10px;   /* starting size, will grow */
+  font-size: 24px;
   line-height: 1.2;
   overflow: hidden;
 }
@@ -444,33 +444,6 @@
         container.append(line, label);
       });
     }
-    /* Auto-resize text inside a cell until it fits */
-function autoFitText(spanEl) {
-  const parent = spanEl.parentElement;
-  if (!parent) return;
-
-  let minSize = 8;
-  let maxSize = 48;
-  let size = minSize;
-
-  // Reset font size
-  spanEl.style.fontSize = size + "px";
-
-  const maxWidth = parent.clientWidth * 0.9; // 90% of parent
-  const maxHeight = parent.clientHeight * 0.9;
-
-  while (size < maxSize) {
-    spanEl.style.fontSize = size + "px";
-    const { width, height } = spanEl.getBoundingClientRect();
-
-    if (width > maxWidth || height > maxHeight) {
-      size--;
-      spanEl.style.fontSize = size + "px";
-      break;
-    }
-    size++;
-  }
-}
 
 
 
@@ -545,12 +518,7 @@ function renderBingoBoard(challenges) {
     const cell = document.createElement("div");
     const span = document.createElement("span");
     span.textContent = item.challenge;
-  cell.appendChild(span);
-
-  // Auto-fit only once when board first loads
-  requestAnimationFrame(() => autoFitText(span));
-
-
+    cell.appendChild(span);
 
     const row = Math.floor(index / BINGO_SIZE);
     const col = index % BINGO_SIZE;
@@ -836,6 +804,7 @@ handleBingoClick = async function(index, cell) {
   </script>
 </body>
 </html>
+
 
 
 
