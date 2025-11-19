@@ -243,20 +243,21 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  padding: 6px;
-}
-/* Auto-fit text inside bingo tiles */
-#bingoBoard div span {
+  
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
+
   width: 90%;
   height: 90%;
-  font-size: 64px; /* starting size */
+  padding: 6px;
+
+  font-size: 10px;   /* starting size, will grow */
   line-height: 1.2;
   overflow: hidden;
 }
+
 
 /* Confetti container */
 #confettiCanvas {
@@ -446,23 +447,36 @@
     /* Auto-resize text inside a cell until it fits */
 function autoFitText(spanEl) {
   const parent = spanEl.parentElement;
+  if (spanEl.dataset.fitted === "true") return; // only run once
 
-  if (spanEl.dataset.fitted === "true") return;
-
-  let size = 64;   // << start big
+  let min = 8;        // smallest allowed size
+  let max = 48;       // largest allowed size (adjust if needed)
+  let size = min;     // start small
   spanEl.style.fontSize = size + "px";
 
   const maxW = parent.clientWidth * 0.85;
   const maxH = parent.clientHeight * 0.85;
 
-  // shrink until it fits OR hit minimum readable size
-  while (size > 10 && (spanEl.scrollHeight > maxH || spanEl.scrollWidth > maxW)) {
-    size--;
+  // Grow text until it overflows, then step back
+  while (size < max) {
     spanEl.style.fontSize = size + "px";
+
+    const overflows =
+      spanEl.scrollWidth > maxW ||
+      spanEl.scrollHeight > maxH;
+
+    if (overflows) {
+      size--; // step back one size
+      spanEl.style.fontSize = size + "px";
+      break;
+    }
+
+    size++;
   }
 
-  spanEl.dataset.fitted = "true";
+  spanEl.dataset.fitted = "true"; // never resize again
 }
+
 
 
 
@@ -826,6 +840,7 @@ handleBingoClick = async function(index, cell) {
   </script>
 </body>
 </html>
+
 
 
 
