@@ -157,38 +157,104 @@
     .submit-minutes:hover {
       background-color: #218838;
     }
-    #bingoBoard {
+   /* =========================================================
+   SUMMER / BEACH THEME — BINGO ONLY
+   ========================================================= */
+
+#bingoSection {
+  background: #fffaf3; /* warm beach sand */
+  border-radius: 16px;
+  padding: 25px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+/* Banner */
+#bingoBanner {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+#bingoBanner img {
+  width: 75%;
+  max-width: 480px;
+  border-radius: 12px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+}
+
+/* Title */
+#bingoSection h3 {
+  font-size: 28px;
+  font-weight: 800;
+  text-align: center;
+  color: #ff8b2e; /* bright summer orange */
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+}
+
+/* Subtitle */
+#bingoSection p {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 500;
+  color: #555;
+}
+
+/* Bingo Grid */
+#bingoBoard {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-  max-width: 90vw;       /* fills screen on mobile */
-  width: 60%;            /* 60% on larger screens */
-  margin: 0 auto;        /* center horizontally */
+  gap: 12px;
+  max-width: 90vw;
+  width: 70%;
+  margin: 20px auto;
 }
 
+/* Bingo Squares */
 #bingoBoard div {
-  padding-top: 100%;     /* makes square aspect ratio */
+  padding-top: 100%;
   position: relative;
-  border: 2px solid #555;
-  border-radius: 10px;
-  background-color: #f0f0f0;
+  border-radius: 14px;
+  border: 2px solid #ffdaba;
+  background: linear-gradient(135deg, #fff5d6, #ffe9c2); /* sand + sun */
   text-align: center;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.3s, transform 0.2s;
+  transition: background 0.25s, transform 0.15s;
+  color: #8c5328;
 }
 
+/* Hover */
+#bingoBoard div:hover {
+  transform: scale(1.05);
+  background: linear-gradient(135deg, #ffefc1, #ffd9a1);
+}
+
+/* Completed Tile (aqua pool colours) */
 #bingoBoard div.completed {
-  background-color: #28a745;
+  background: linear-gradient(135deg, #45e1ff, #1cb8ff);
+  border-color: #0a88b8;
   color: white;
+  transform: scale(1.04);
 }
 
+/* Text inside square */
 #bingoBoard div span {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  padding: 5px;
+  padding: 6px;
+}
+
+/* Confetti container */
+#confettiCanvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
 }
 
   </style>
@@ -241,10 +307,16 @@
     </section>
 
     <section id="bingoSection" class="section">
-    <h3>Reading Bingo</h3>
-    <p>Click a square when you complete a challenge to earn bonus minutes!</p>
-    <div id="bingoBoard" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:5px; max-width:500px;"></div>
+  <div id="bingoBanner">
+    <img src="https://i.imgur.com/9wPl4q0.png" alt="Reading Bingo Banner" />
+  </div>
+
+  <h3>Summer Reading Bingo</h3>
+  <p>Get 5 in a row to get bingo or fill the page!</p>
+
+  <div id="bingoBoard"></div>
 </section>
+
 
   </main>
 
@@ -554,6 +626,64 @@ async function loadBingo() {
   }
 }
 
+    /* === SUMMER CONFETTI === */
+const confettiCanvas = document.getElementById("confettiCanvas");
+const ctx = confettiCanvas.getContext("2d");
+
+function resizeConfetti() {
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+}
+resizeConfetti();
+window.addEventListener("resize", resizeConfetti);
+
+function launchConfetti() {
+  const confetti = [];
+  const colors = ["#ff8b2e", "#ffd54f", "#1cb8ff", "#ff6f91", "#45e1ff"];
+
+  for (let i = 0; i < 150; i++) {
+    confetti.push({
+      x: Math.random() * confettiCanvas.width,
+      y: Math.random() * confettiCanvas.height - confettiCanvas.height,
+      r: Math.random() * 6 + 4,
+      c: colors[Math.floor(Math.random() * colors.length)],
+      s: Math.random() * 3 + 2
+    });
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+    confetti.forEach(p => {
+      p.y += p.s;
+      if (p.y > confettiCanvas.height) p.y = -20;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.c;
+      ctx.fill();
+    });
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+
+  setTimeout(() => ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height), 4000);
+}
+
+/* Hook into your bingo win condition */
+const originalHandleBingoClick = handleBingoClick;
+handleBingoClick = async function(index, cell) {
+  const prevState = JSON.parse(JSON.stringify(userBingoState));
+  await originalHandleBingoClick(index, cell);
+
+  // If we got a new bingo AFTER the toggle -> CONFETTI
+  const hadBingoBefore = checkAnyBingo(prevState);
+  const hasBingoAfter = checkAnyBingo(userBingoState);
+
+  if (!hadBingoBefore && hasBingoAfter) {
+    launchConfetti();
+  }
+};
+
     /* ========= EVENT HANDLERS ========= */
     document.getElementById('profileIcon').addEventListener('click', e => {
       e.stopPropagation();
@@ -633,8 +763,10 @@ async function loadBingo() {
     /* ========= INIT ========= */
     loadDashboard();
   </script>
+  <canvas id="confettiCanvas"></canvas>
 </body>
 </html>
+
 
 
 
