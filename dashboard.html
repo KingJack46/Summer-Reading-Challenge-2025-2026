@@ -253,7 +253,7 @@
   text-align: center;
   width: 90%;
   height: 90%;
-  font-size: 16px; /* starting size */
+  font-size: 32px; /* starting size */
   line-height: 1.2;
   overflow: hidden;
 }
@@ -447,25 +447,23 @@
 function autoFitText(spanEl) {
   const parent = spanEl.parentElement;
 
-  // If already resized once, skip permanently
   if (spanEl.dataset.fitted === "true") return;
 
-  // Starting size based on your CSS
-  let size = 16;
+  let size = 32;   // << start big
   spanEl.style.fontSize = size + "px";
 
   const maxW = parent.clientWidth * 0.85;
   const maxH = parent.clientHeight * 0.85;
 
-  // Only shrink while text exceeds bounds
-  while (size > 6 && (spanEl.scrollHeight > maxH || spanEl.scrollWidth > maxW)) {
+  // shrink until it fits OR hit minimum readable size
+  while (size > 10 && (spanEl.scrollHeight > maxH || spanEl.scrollWidth > maxW)) {
     size--;
     spanEl.style.fontSize = size + "px";
   }
 
-  // Mark as permanently done
   spanEl.dataset.fitted = "true";
 }
+
 
 
 
@@ -828,6 +826,7 @@ handleBingoClick = async function(index, cell) {
   </script>
 </body>
 </html>
+
 
 
 
