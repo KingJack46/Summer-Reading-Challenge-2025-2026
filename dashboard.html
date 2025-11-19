@@ -447,35 +447,31 @@
     /* Auto-resize text inside a cell until it fits */
 function autoFitText(spanEl) {
   const parent = spanEl.parentElement;
-  if (spanEl.dataset.fitted === "true") return; // only run once
+  if (!parent) return;
 
-  let min = 8;        // smallest allowed size
-  let max = 48;       // largest allowed size (adjust if needed)
-  let size = min;     // start small
+  let minSize = 8;
+  let maxSize = 48;
+  let size = minSize;
+
+  // Reset font size
   spanEl.style.fontSize = size + "px";
 
-  const maxW = parent.clientWidth * 0.85;
-  const maxH = parent.clientHeight * 0.85;
+  const maxWidth = parent.clientWidth * 0.9; // 90% of parent
+  const maxHeight = parent.clientHeight * 0.9;
 
-  // Grow text until it overflows, then step back
-  while (size < max) {
+  while (size < maxSize) {
     spanEl.style.fontSize = size + "px";
+    const { width, height } = spanEl.getBoundingClientRect();
 
-    const overflows =
-      spanEl.scrollWidth > maxW ||
-      spanEl.scrollHeight > maxH;
-
-    if (overflows) {
-      size--; // step back one size
+    if (width > maxWidth || height > maxHeight) {
+      size--;
       spanEl.style.fontSize = size + "px";
       break;
     }
-
     size++;
   }
-
-  spanEl.dataset.fitted = "true"; // never resize again
 }
+
 
 
 
@@ -840,6 +836,7 @@ handleBingoClick = async function(index, cell) {
   </script>
 </body>
 </html>
+
 
 
 
