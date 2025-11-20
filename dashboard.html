@@ -429,6 +429,7 @@ async function loadReadingStreak() {
   if (!currentUser) return;
 
   const logs = await getUserLogs(currentUser.user_name);
+
   const streakEl = document.getElementById("readingStreakDisplay");
   const highScoreEl = document.getElementById("dailyHighScoreDisplay");
 
@@ -438,45 +439,60 @@ async function loadReadingStreak() {
     return;
   }
 
-  /* ------------ DAILY HIGHSCORE LOGIC ------------ */
-  let highScore = 0;
-  const dayTotals = {};
-
+  /* ---- DAILY HIGH SCORE ---- */
+  let dayTotals = {};
   logs.forEach(l => {
     const day = new Date(l.time_logged).toISOString().slice(0, 10);
-    if (!dayTotals[day]) dayTotals[day] = 0;
-    dayTotals[day] += l.minutes_logged;
+    dayTotals[day] = (dayTotals[day] || 0) + l.minutes_logged;
   });
+  highScoreEl.textContent =
+    "Daily High Score: " + Math.max(...Object.values(dayTotals)) + " minutes";
 
-  highScore = Math.max(...Object.values(dayTotals));
-  highScoreEl.textContent = `Daily High Score: ${highScore} minutes`;
+  /* ---- STREAK CALCULATION ---- */
 
-  /* ------------ READING STREAK LOGIC ------------- */
-  let streak = 1;
-  let prev = new Date(logs[0].time_logged).getTime();
+  // Convert to sorted list of unique days
+  const uniqueDays = Object.keys(dayTotals)
+    .map(d => new Date(d))
+    .sort((a, b) => b - a);
 
-  const interval = STREAK_INTERVAL_SECONDS * 1000;
+  let streak = 0;
 
-  for (let i = 1; i < logs.length; i++) {
-    const current = new Date(logs[i].time_logged).getTime();
-    const diff = prev - current; // difference between log i and log i-1
+  const ONE_DAY = 24 * 60 * 60 * 1000;
+  const today = new Date();
+  const latestLogDate = uniqueDays[0];
 
-    if (diff <= interval) {
+  // ❌ Latest log is older than 24 hours → streak = 0
+  if (today - latestLogDate > ONE_DAY) {
+    streakEl.textContent = "Reading Streak: 0 days";
+    await supabase
+      .from("Userdetails")
+      .update({ reading_streak: 0 })
+      .ilike("user_name", currentUser.user_name);
+    return;
+  }
+
+  // ✔️ Start streak at 1 because latest log counts
+  streak = 1;
+
+  // Check backwards consecutive days
+  for (let i = 1; i < uniqueDays.length; i++) {
+    const diff = uniqueDays[i - 1] - uniqueDays[i];
+    if (diff === ONE_DAY) {
       streak++;
-      prev = current;
     } else {
-      break; // streak is broken
+      break;
     }
   }
 
   streakEl.textContent = `Reading Streak: ${streak} day(s)`;
 
-  /* ------------ UPDATE DATABASE VALUE ------------- */
+  // Update database
   await supabase
     .from("Userdetails")
     .update({ reading_streak: streak })
     .ilike("user_name", currentUser.user_name);
 }
+
 
 
     /* ========= DASHBOARD LOADER ========= */
@@ -846,6 +862,7 @@ handleBingoClick = async function(index, cell) {
   </script>
 </body>
 </html>
+
 
 
 
