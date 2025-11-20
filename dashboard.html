@@ -456,8 +456,8 @@ async function loadReadingStreak() {
     .sort((a, b) => b - a);
 
   let streak = 0;
-
-  const ONE_DAY = 24 * 60 * 60 * 1000;
+//32 hours to support certain situations, i.e reading in the morning one day, then the afternoon of the next would be > 24 hours
+  const ONE_DAY = 32 * 60 * 60 * 1000;
   const today = new Date();
   const latestLogDate = uniqueDays[0];
 
@@ -862,6 +862,7 @@ handleBingoClick = async function(index, cell) {
   </script>
 </body>
 </html>
+
 
 
 
