@@ -442,27 +442,24 @@ async function loadReadingStreak() {
   /* ---- DAILY HIGH SCORE ---- */
   let dayTotals = {};
   logs.forEach(l => {
-    const day = new Date(l.time_logged).toISOString().slice(0, 10);
+    const day = new Date(l.time_logged).toISOString().slice(0, 10); // YYYY-MM-DD
     dayTotals[day] = (dayTotals[day] || 0) + l.minutes_logged;
   });
+
   highScoreEl.textContent =
     "Daily High Score: " + Math.max(...Object.values(dayTotals)) + " minutes";
 
   /* ---- STREAK CALCULATION ---- */
 
-  // Convert to sorted list of unique days
-  const uniqueDays = Object.keys(dayTotals)
-    .map(d => new Date(d))
-    .sort((a, b) => b - a);
+  // List of unique date strings sorted newest -> oldest
+  const days = Object.keys(dayTotals).sort().reverse();
 
-  let streak = 0;
-//32 hours to support certain situations, i.e reading in the morning one day, then the afternoon of the next would be > 24 hours
-  const ONE_DAY = 32 * 60 * 60 * 1000;
   const today = new Date();
-  const latestLogDate = uniqueDays[0];
+  const latestDay = new Date(days[0]);
+  const THIRTY_TWO_HOURS = 32 * 60 * 60 * 1000;
 
-  // ❌ Latest log is older than 24 hours → streak = 0
-  if (today - latestLogDate > ONE_DAY) {
+  // Check if latest log is too old (breaking the streak)
+  if (today - latestDay > THIRTY_TWO_HOURS) {
     streakEl.textContent = "Reading Streak: 0 days";
     await supabase
       .from("Userdetails")
@@ -471,27 +468,37 @@ async function loadReadingStreak() {
     return;
   }
 
-  // ✔️ Start streak at 1 because latest log counts
-  streak = 1;
+  // Start streak at 1 because the latest day counts
+  let streak = 1;
 
-  // Check backwards consecutive days
-  for (let i = 1; i < uniqueDays.length; i++) {
-    const diff = uniqueDays[i - 1] - uniqueDays[i];
-    if (diff === ONE_DAY) {
+  // Helper: count calendar day differences
+  const daysBetween = (a, b) => {
+    const d1 = new Date(a);
+    const d2 = new Date(b);
+    return Math.round(
+      (d1 - d2) / (24 * 60 * 60 * 1000)
+    );
+  };
+
+  // Walk through previous days
+  for (let i = 1; i < days.length; i++) {
+    if (daysBetween(days[i - 1], days[i]) === 1) {
       streak++;
     } else {
       break;
     }
   }
 
+  // Update UI
   streakEl.textContent = `Reading Streak: ${streak} day(s)`;
 
-  // Update database
+  // Update DB
   await supabase
     .from("Userdetails")
     .update({ reading_streak: streak })
     .ilike("user_name", currentUser.user_name);
 }
+
 
 
 
@@ -862,6 +869,7 @@ handleBingoClick = async function(index, cell) {
   </script>
 </body>
 </html>
+
 
 
 
