@@ -157,106 +157,38 @@
     .submit-minutes:hover {
       background-color: #218838;
     }
-   /* =========================================================
-   SUMMER / BEACH THEME — BINGO ONLY
-   ========================================================= */
-
-#bingoSection {
-  background: #fffaf3; /* warm beach sand */
-  border-radius: 16px;
-  padding: 25px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-}
-
-/* Banner */
-#bingoBanner {
-  text-align: center;
-  margin-bottom: 10px;
-}
-
-#bingoBanner img {
-  width: 75%;
-  max-width: 480px;
-  border-radius: 12px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-}
-
-/* Title */
-#bingoSection h3 {
-  font-size: 28px;
-  font-weight: 800;
-  text-align: center;
-  color: #ff8b2e; /* bright summer orange */
-  margin-bottom: 10px;
-  letter-spacing: 1px;
-}
-
-/* Subtitle */
-#bingoSection p {
-  text-align: center;
-  font-size: 15px;
-  font-weight: 500;
-  color: #555;
-}
-
-/* Bingo Grid */
-#bingoBoard {
+    #bingoBoard {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 12px;
-  max-width: 90vw;
-  width: 70%;
-  margin: 20px auto;
+  gap: 8px;
+  max-width: 90vw;       /* fills screen on mobile */
+  width: 60%;            /* 60% on larger screens */
+  margin: 0 auto;        /* center horizontally */
 }
 
-/* Bingo Squares */
 #bingoBoard div {
-  padding-top: 100%;
+  padding-top: 100%;     /* makes square aspect ratio */
   position: relative;
-  border-radius: 14px;
-  border: 2px solid #ffdaba;
-  background: linear-gradient(135deg, #fff5d6, #ffe9c2); /* sand + sun */
+  border: 2px solid #555;
+  border-radius: 10px;
+  background-color: #f0f0f0;
   text-align: center;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.25s, transform 0.15s;
-  color: #8c5328;
+  transition: background 0.3s, transform 0.2s;
 }
 
-/* Hover */
-#bingoBoard div:hover {
-  transform: scale(1.05);
-  background: linear-gradient(135deg, #ffefc1, #ffd9a1);
-}
-
-/* Completed Tile (aqua pool colours) */
 #bingoBoard div.completed {
-  background: linear-gradient(135deg, #45e1ff, #1cb8ff);
-  border-color: #0a88b8;
+  background-color: #28a745;
   color: white;
-  transform: scale(1.04);
 }
 
-/* Text inside square */
 #bingoBoard div span {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 20px
-  padding: 6px;
-}
-/* Auto-fit text inside bingo tiles */
-#bingoBoard div span {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  width: 90%;
-  height: 90%;
-  font-size: 16px; /* starting size */
-  line-height: 1.2;
-  overflow: hidden;
+  padding: 5px;
 }
 
 /* Confetti container */
@@ -852,6 +784,7 @@ handleBingoClick = async function(index, cell) {
   </script>
 </body>
 </html>
+
 
 
 
