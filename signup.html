@@ -60,7 +60,7 @@
 
   <script>
 const SUPABASE_URL = 'https://hfugnpqguidgosxyuioj.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdWducHFndWlkZ29zeHl1aW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NjE3ODAsImV4cCI6MjA3ODAzNzc4MH0.eawP-KaZTXOAE_OSYeJR6Ds_c6aKsqOsXo_EGifgtrU';
+const SUPABASE_ANON_KEY = 'your-anon-key';  // Use your real anon key
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 document.getElementById('signupForm').addEventListener('submit', async (e) => {
@@ -79,30 +79,49 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
 
   message.textContent = "Checking username availability...";
 
-  // 🔍 Check if username already exists in auth users metadata
-  const { data: existingUsers, error: userError } = await supabase.auth.admin.listUsers();
-  
-  if (existingUsers?.users?.some(u => u.user_metadata?.user_name?.toLowerCase() === user_name.toLowerCase())) {
+  // 🔍 Check if username already exists in the 'Userdetails' table
+  const { data: takenUsernames, error: takenError } = await supabase
+    .from('Userdetails')
+    .select('user_name')
+    .eq('user_name', user_name);
+
+  if (takenError) {
+    message.textContent = "Error checking username availability.";
+    return;
+  }
+
+  if (takenUsernames.length > 0) {
     message.textContent = "Username is already taken.";
     return;
   }
 
   message.textContent = "Creating account...";
 
-  // 🟢 Create user via Supabase auth and store username in user_metadata
+  // 🟢 Create user via Supabase auth (no need to store user_name in metadata)
   const { data, error: signupError } = await supabase.auth.signUp({
     email,
     phone,
     password,
-    options: {
-      data: {
-        user_name: user_name,  // Store username in user_metadata
-      }
-    }
   });
 
   if (signupError) {
     message.textContent = "Signup error: " + signupError.message;
+    return;
+  }
+
+  // 🟢 Insert UUID and user details into 'Userdetails' table
+  const userId = data.user.id;
+
+  const { error: insertError } = await supabase.from('Userdetails').insert([{
+    id: userId,              // UUID is automatically created for the new user
+    user_name: user_name,    // Save the username in the Userdetails table
+    minutes_logged: 0,
+    reading_streak: 0,
+    last_login: new Date().toISOString()
+  }]);
+
+  if (insertError) {
+    message.textContent = "Error saving user details: " + insertError.message;
     return;
   }
 
