@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Login - Library Reading Challenge</title>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -57,54 +58,65 @@
   <div id="message"></div>
 
   <script>
-    const SUPABASE_URL = 'https://hfugnpqguidgosxyuioj.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdWducHFndWlkZ29zeHl1aW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NjE3ODAsImV4cCI6MjA3ODAzNzc4MH0.eawP-KaZTXOAE_OSYeJR6Ds_c6aKsqOsXo_EGifgtrU'; // replace with your anon key
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL = 'https://hfugnpqguidgosxyuioj.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_KEY';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      //lower case for login purposes
-      const user_name = document.getElementById('user_name').value.trim().toLowerCase();
-      const password = document.getElementById('password').value.trim();
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
 
-      document.getElementById('message').textContent = 'Checking credentials...';
+  const usernameInput = document.getElementById('user_name').value.trim().toLowerCase();
+  const password = document.getElementById('password').value.trim();
+  const message = document.getElementById('message');
 
-      try {
-        const { data, error } = await supabase
-          .from('Userdetails')
-          .select('*')
-          .ilike('user_name', user_name)
-          .eq('password', password)
-          .limit(1)
-          .single();
+  message.textContent = "Searching for user...";
 
-        if (error || !data) {
-          throw new Error('Invalid username or password');
-        }
+  // 🔍 Get all users from Supabase Auth
+  const { data: users, error: listErr } = await supabase.auth.admin.listUsers();
 
-        // Optionally update last_login
-        await supabase.from('Userdetails')
-          .update({ last_login: new Date().toISOString() })
-          .eq('id', data.id);
+  if (listErr) {
+    message.textContent = "Error fetching users.";
+    return;
+  }
 
-        document.getElementById('message').textContent = 'Login successful! Redirecting...';
-        // redirect to main app/dashboard page
-        sessionStorage.setItem('username', user_name);
-        setTimeout(() => window.location.href = 'dashboard.html', 1000);
+  // Try to match username in metadata
+  const matchedUser = users.users.find(u =>
+    u.user_metadata?.user_name?.toLowerCase() === usernameInput
+  );
 
-      } catch (err) {
-        document.getElementById('message').textContent = 'Error: ' + err.message;
-      }
-    });
+  if (!matchedUser) {
+    message.textContent = "Invalid username or password.";
+    return;
+  }
+
+  // 🟢 Login with Supabase auth using email or phone
+  const identifier = matchedUser.email || matchedUser.phone;
+
+  message.textContent = "Logging in...";
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: matchedUser.email ?? undefined,
+    phone: matchedUser.phone ?? undefined,
+    password
+  });
+
+  if (error) {
+    message.textContent = "Invalid username or password.";
+    return;
+  }
+
+  // Update last login timestamp
+  await supabase.auth.updateUser({
+    data: {
+      last_login: new Date().toISOString()
+    }
+  });
+
+  sessionStorage.setItem("username", matchedUser.user_metadata.user_name);
+
+  message.textContent = "Login successful! Redirecting...";
+  setTimeout(() => window.location.href = "dashboard.html", 1000);
+});
   </script>
-
 </body>
 </html>
-
-
-
-
-
-
-
-
