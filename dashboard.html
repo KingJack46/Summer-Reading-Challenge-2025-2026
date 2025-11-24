@@ -270,246 +270,605 @@
 
   </main>
 
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script>
-/* -------------------------------------------------------
-   INITIALIZE SUPABASE
-------------------------------------------------------- */
-const SUPABASE_URL = "https://hfugnpqguidgosxyuioj.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdWducHFndWlkZ29zeHl1aW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NjE3ODAsImV4cCI6MjA3ODAzNzc4MH0.eawP-KaZTXOAE_OSYeJR6Ds_c6aKsqOsXo_EGifgtrU";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <script>
+    /* ========= CONFIG ========= */
+    const SUPABASE_URL = 'https://hfugnpqguidgosxyuioj.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdWducHFndWlkZ29zeHl1aW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NjE3ODAsImV4cCI6MjA3ODAzNzc4MH0.eawP-KaZTXOAE_OSYeJR6Ds_c6aKsqOsXo_EGifgtrU';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const COMMUNITY_GOAL = 2_000_000;
+    let currentUser = null;
+    let stopwatchInterval = null;
+    let startTime = null;
+    // set to number of seconds for testing
+    // e.g. 10 = requires logging every 10 seconds for a streak
+    let STREAK_INTERVAL_SECONDS = 24 * 60 * 60; // 1 day normally
 
-let currentUser = null;        // Auth user
-let currentProfile = null;     // Userdetails record
-let stopwatchInterval = null;
-let stopwatchSeconds = 0;
 
-/* -------------------------------------------------------
-   AUTH + PROFILE LOADING
-------------------------------------------------------- */
-async function loadDashboard() {
-  // 1. Check logged-in user
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    window.location.href = "login.html";
+    /* ========= UTILS ========= */
+    function formatTime(ms) {
+      const totalSeconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    /* ========= SUPABASE HELPERS ========= */
+    async function getUserData(username) {
+      const { data, error } = await supabase.from('Userdetails').select('*').ilike('user_name', username).single();
+      if (error) throw error;
+      return data;
+    }
+
+    async function getUserLogs(username) {
+      const { data, error } = await supabase.from('loghistory').select('minutes_logged, time_logged').ilike('user_name', username).order("time_logged", { ascending: false });
+      if (error) throw error;
+      return data;
+    }
+
+    async function getAllUsers() {
+      const { data, error } = await supabase.from('Userdetails').select('user_name, minutes_logged');
+      if (error) throw error;
+      return data;
+    }
+
+    async function getAllLogs() {
+      const { data, error } = await supabase.from('loghistory').select('minutes_logged');
+      if (error) throw error;
+      return data;
+    }
+
+    async function logReadingMinutes(user, minutes, bookTitle) {
+      const { error } = await supabase.from('loghistory').insert([{
+        user_name: user.user_name,
+        minutes_logged: minutes,
+        book_title: bookTitle,
+        time_logged: new Date().toISOString()
+      }]);
+      loadDashboard();
+      if (error) throw error;
+    }
+
+    /* ========= RENDER FUNCTIONS ========= */
+    function renderWelcome(user) {
+      document.getElementById('profileInitial').textContent = user.user_name[0].toUpperCase();
+      document.getElementById('welcomeMessage').textContent = `Welcome back, ${user.user_name}!`;
+    }
+
+    function renderUserMinutes(total) {
+      document.getElementById('userMinutes').textContent = `${total.toLocaleString()} minutes`;
+    }
+
+    function renderLeaderboard(users) {
+      const container = document.getElementById('leaderboardContainer');
+      container.innerHTML = '';
+      if (!users.length) return (container.textContent = 'No leaderboard data available.');
+
+      users
+        .sort((a, b) => b.minutes_logged - a.minutes_logged)
+        .slice(0, 10)
+        .forEach(user => {
+          const bar = document.createElement('div');
+          bar.classList.add('leaderboard-bar');
+          bar.innerHTML = `
+            <div class="leaderboard-profile">${user.user_name[0].toUpperCase()}</div>
+            <div style="background:#007bff;width:${Math.min(user.minutes_logged / 10,300)}px;height:30px;border-radius:4px;"></div>
+            <div class="leaderboard-label">${user.user_name}: ${user.minutes_logged} min</div>
+          `;
+          container.appendChild(bar);
+        });
+    }
+
+    function renderProgressBar(total) {
+      const fill = document.getElementById('progressFill');
+      const text = document.getElementById('progressText');
+      const container = document.getElementById('communityProgressBar');
+      const percent = Math.min((total / COMMUNITY_GOAL) * 100, 100);
+      fill.style.width = `${percent}%`;
+      text.textContent = `Community has logged ${total.toLocaleString()} of ${COMMUNITY_GOAL.toLocaleString()} minutes (${percent.toFixed(2)}%)`;
+
+      container.querySelectorAll('.milestone, .milestone-label').forEach(el => el.remove());
+      const milestones = [10000, 50000, 100000];
+      for (let i = 200000; i <= COMMUNITY_GOAL; i += 100000) milestones.push(i);
+
+      milestones.forEach(ms => {
+        const pos = (ms / COMMUNITY_GOAL) * container.offsetWidth;
+        const line = document.createElement('div');
+        line.className = 'milestone';
+        line.style.left = `${pos}px`;
+
+        const label = document.createElement('div');
+        label.className = 'milestone-label';
+        label.textContent = ms >= 1_000_000 ? (ms / 1_000_000).toFixed(1) + 'M' : (ms >= 1000 ? (ms / 1000) + 'k' : ms);
+        label.style.left = `${pos}px`;
+
+        container.append(line, label);
+      });
+    }
+    /* Auto-resize text inside a cell until it fits */
+/* Auto-fit text inside a bingo cell after layout settles */
+/* ===============================
+   RESPONSIVE AUTO-FIT TEXT ENGINE
+   =============================== */
+
+function autoFitText(el) {
+  const parent = el.parentElement;
+
+  let min = 1;   // minimum readable size
+  let max = 40;  // max size for large screens
+  let size = max;
+
+  // binary-search for the ideal size (MUCH faster than decrement loops)
+  function fits(fontSize) {
+    el.style.fontSize = fontSize + "px";
+    return (
+      el.scrollWidth <= parent.clientWidth * 0.90 &&
+      el.scrollHeight <= parent.clientHeight * 0.90
+    );
+  }
+
+  // binary search (fast + smooth)
+  while (min <= max) {
+    let mid = Math.floor((min + max) / 2);
+    if (fits(mid)) {
+      size = mid;
+      min = mid + 1; // try bigger
+    } else {
+      max = mid - 1; // too big → shrink
+    }
+  }
+
+  el.style.fontSize = size + "px";
+}
+
+/* Re-fit all bingo tiles */
+function autoFitAllBingoText() {
+  const spans = document.querySelectorAll("#bingoBoard div span");
+  spans.forEach(span => autoFitText(span));
+}
+async function loadReadingStreak() {
+  if (!currentUser) return;
+
+  const logs = await getUserLogs(currentUser.user_name);
+
+  const streakEl = document.getElementById("readingStreakDisplay");
+  const highScoreEl = document.getElementById("dailyHighScoreDisplay");
+
+  if (!logs || logs.length === 0) {
+    streakEl.textContent = "Reading Streak: 0 days";
+    highScoreEl.textContent = "Daily High Score: 0 minutes";
     return;
   }
 
-  currentUser = user;
+  /* ---- DAILY HIGH SCORE ---- */
+  let dayTotals = {};
+  logs.forEach(l => {
+    const day = new Date(l.time_logged).toISOString().slice(0, 10); // YYYY-MM-DD
+    dayTotals[day] = (dayTotals[day] || 0) + l.minutes_logged;
+  });
 
-  // 2. Load the user's profile row
-  const { data: profile, error } = await supabase
-    .from("Userdetails")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  highScoreEl.textContent =
+    "Daily High Score: " + Math.max(...Object.values(dayTotals)) + " minutes";
 
-  if (error || !profile) {
-    console.error("Userdetails missing:", error);
-    alert("User profile missing. Contact admin.");
+  /* ---- STREAK CALCULATION ---- */
+
+  // List of unique date strings sorted newest -> oldest
+  const days = Object.keys(dayTotals).sort().reverse();
+
+  const today = new Date();
+  const latestDay = new Date(days[0]);
+  const THIRTY_TWO_HOURS = 32 * 60 * 60 * 1000;
+
+  // Check if latest log is too old (breaking the streak)
+  if (today - latestDay > THIRTY_TWO_HOURS) {
+    streakEl.textContent = "Reading Streak: 0 days";
+    await supabase
+      .from("Userdetails")
+      .update({ reading_streak: 0 })
+      .ilike("user_name", currentUser.user_name);
     return;
   }
 
-  currentProfile = profile;
+  // Start streak at 1 because the latest day counts
+  let streak = 1;
 
-  // 3. Update last_login
+  // Helper: count calendar day differences
+  const daysBetween = (a, b) => {
+    const d1 = new Date(a);
+    const d2 = new Date(b);
+    return Math.round(
+      (d1 - d2) / (24 * 60 * 60 * 1000)
+    );
+  };
+
+  // Walk through previous days
+  for (let i = 1; i < days.length; i++) {
+    if (daysBetween(days[i - 1], days[i]) === 1) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+
+  // Update UI
+  streakEl.textContent = `Reading Streak: ${streak} day(s)`;
+
+  // Update DB
   await supabase
     .from("Userdetails")
-    .update({ last_login: new Date().toISOString() })
-    .eq("id", user.id);
-
-  // 4. Initialize UI
-  document.getElementById("usernameDisplay").textContent = profile.user_name;
-  updateMinutesDisplay(profile.minutes_logged);
-  updateStreakDisplay(profile.reading_streak);
-
-  loadLogHistory();
-  loadLeaderboard();
-  loadCommunityTotals();
-  loadBingoBoard();
+    .update({ reading_streak: streak })
+    .ilike("user_name", currentUser.user_name);
 }
 
-/* -------------------------------------------------------
-   STREAK HANDLING
-------------------------------------------------------- */
-async function updateReadingStreak() {
-  const today = new Date().toISOString().split("T")[0];
 
-  const { data: history } = await supabase
-    .from("loghistory")
-    .select("created_at")
-    .eq("user_id", currentUser.id)
-    .order("created_at", { ascending: false })
-    .limit(1);
 
-  let streak = currentProfile.reading_streak || 0;
 
-  if (!history || history.length === 0) {
-    streak = 1;
-  } else {
-    const lastLogDate = history[0].created_at.split("T")[0];
-    const diff =
-      (new Date(today) - new Date(lastLogDate)) / 1000 / 60 / 60 / 24;
+    /* ========= DASHBOARD LOADER ========= */
+    async function loadDashboard() {
+      const username = sessionStorage.getItem('username');
+      if (!username) return (window.location.href = 'login.html');
 
-    if (diff === 1) streak += 1;
-    else if (diff > 1) streak = 1;
+      currentUser = await getUserData(username);
+      renderWelcome(currentUser);
+
+      const userLogs = await getUserLogs(username);
+      const totalUserMinutes = userLogs.reduce((s, e) => s + e.minutes_logged, 0);
+      renderUserMinutes(totalUserMinutes);
+
+      await supabase.from('Userdetails').update({ minutes_logged: totalUserMinutes }).ilike('user_name', username);
+
+      const allUsers = await getAllUsers();
+      renderLeaderboard(allUsers);
+
+      const allLogs = await getAllLogs();
+      const totalCommunityMinutes = allLogs.reduce((s, e) => s + e.minutes_logged, 0);
+      renderProgressBar(totalCommunityMinutes);
+      await loadBingo();
+      await loadReadingStreak();
+
+    }
+
+/* ========= BINGO LOGIC (FIXED) ========= */
+const BINGO_SIZE = 5;
+let bingoData = [];
+let userBingoState = Array(BINGO_SIZE).fill(null).map(() => Array(BINGO_SIZE).fill(false));
+let BINGO_WIN_BONUS = 20;
+
+/* Load Bingo Challenges */
+async function getBingoData() {
+  const { data, error } = await supabase.from("bingochallenges").select("*");
+  if (error) throw error;
+  return data;
+}
+
+/* Load User Bingo State */
+async function getUserBingoState(username) {
+  const { data, error } = await supabase
+    .from("user_bingo_state")
+    .select("*")
+    .ilike("user_name", username);
+
+  if (error) throw error;
+
+  const state = Array(BINGO_SIZE).fill(null).map(() => Array(BINGO_SIZE).fill(false));
+
+  if (data) {
+    data.forEach(row => {
+      const r = Math.floor(row.bingo_index / BINGO_SIZE);
+      const c = row.bingo_index % BINGO_SIZE;
+      state[r][c] = row.completed;
+    });
   }
 
-  // Save streak
-  await supabase.from("Userdetails")
-    .update({ reading_streak: streak })
-    .eq("id", currentUser.id);
-
-  currentProfile.reading_streak = streak;
-  updateStreakDisplay(streak);
+  return state;
 }
 
-/* -------------------------------------------------------
-   MINUTES HANDLING
-------------------------------------------------------- */
-async function addMinutes(amount) {
-  const newTotal = (currentProfile.minutes_logged || 0) + amount;
-
-  await supabase.from("Userdetails")
-    .update({ minutes_logged: newTotal })
-    .eq("id", currentUser.id);
-
-  currentProfile.minutes_logged = newTotal;
-  updateMinutesDisplay(newTotal);
-
-  // Add to loghistory
-  await supabase.from("loghistory").insert([{
-    user_id: currentUser.id,
-    minutes: amount
-  }]);
-
-  loadLogHistory();
-  loadLeaderboard();
-  loadCommunityTotals();
-  updateReadingStreak();
-}
-
-function updateMinutesDisplay(minutes) {
-  document.getElementById("minutesDisplay").textContent = minutes;
-}
-
-function updateStreakDisplay(streak) {
-  document.getElementById("streakDisplay").textContent = streak;
-}
-
-/* -------------------------------------------------------
-   STOPWATCH FEATURE
-------------------------------------------------------- */
-function startStopwatch() {
-  if (stopwatchInterval) return;
-
-  stopwatchInterval = setInterval(() => {
-    stopwatchSeconds++;
-    document.getElementById("stopwatchDisplay").textContent =
-      formatTime(stopwatchSeconds);
-  }, 1000);
-}
-
-function stopStopwatch() {
-  clearInterval(stopwatchInterval);
-  stopwatchInterval = null;
-}
-
-async function saveStopwatch() {
-  if (stopwatchSeconds === 0) return;
-
-  await addMinutes(Math.floor(stopwatchSeconds / 60));
-
-  stopwatchSeconds = 0;
-  document.getElementById("stopwatchDisplay").textContent = "00:00:00";
-}
-
-function formatTime(sec) {
-  const h = String(Math.floor(sec / 3600)).padStart(2, "0");
-  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
-  const s = String(sec % 60).padStart(2, "0");
-  return `${h}:${m}:${s}`;
-}
-
-/* -------------------------------------------------------
-   LOG HISTORY
-------------------------------------------------------- */
-async function loadLogHistory() {
-  const { data } = await supabase
-    .from("loghistory")
-    .select("*")
-    .eq("user_id", currentUser.id)
-    .order("created_at", { ascending: false });
-
-  const logContainer = document.getElementById("logHistory");
-  logContainer.innerHTML = data
-    .map(r => `<li>${r.minutes} min — ${new Date(r.created_at).toLocaleString()}</li>`)
-    .join("");
-}
-
-/* -------------------------------------------------------
-   LEADERBOARD
-------------------------------------------------------- */
-async function loadLeaderboard() {
-  const { data } = await supabase
-    .from("Userdetails")
-    .select("user_name, minutes_logged")
-    .order("minutes_logged", { ascending: false });
-
-  const list = document.getElementById("leaderboard");
-  list.innerHTML = data
-    .map(u => `<li>${u.user_name}: ${u.minutes_logged} min</li>`)
-    .join("");
-}
-
-/* -------------------------------------------------------
-   COMMUNITY TOTALS
-------------------------------------------------------- */
-async function loadCommunityTotals() {
-  const { data } = await supabase.rpc("community_total_minutes");
-
-  document.getElementById("communityTotal").textContent =
-    data?.total ?? 0;
-}
-
-/* -------------------------------------------------------
-   BINGO BOARD (existing system)
-------------------------------------------------------- */
-async function loadBingoBoard() {
-  const { data } = await supabase
-    .from("bingoboard")
-    .select("*")
-    .eq("user_id", currentUser.id);
-
+/* Render bingo board */
+function renderBingoBoard(challenges) {
   const board = document.getElementById("bingoBoard");
-  board.innerHTML = data
-    .map(cell => `
-      <div class="cell ${cell.completed ? "done" : ""}">
-        ${cell.label}
-      </div>
-    `)
-    .join("");
+  board.innerHTML = "";
+  bingoData = challenges;
+
+  challenges.forEach((item, index) => {
+    const cell = document.createElement("div");
+    const span = document.createElement("span");
+    span.textContent = item.challenge;
+    cell.appendChild(span);
+    requestAnimationFrame(() => autoFitText(span));
+
+
+    const row = Math.floor(index / BINGO_SIZE);
+    const col = index % BINGO_SIZE;
+
+    if (userBingoState[row][col]) cell.classList.add("completed");
+
+    cell.addEventListener("click", () => handleBingoClick(index, cell));
+    board.appendChild(cell);
+  });
 }
 
-/* -------------------------------------------------------
-   LOGOUT
-------------------------------------------------------- */
-async function logout() {
-  await supabase.auth.signOut();
-  window.location.href = "login.html";
+/* Utility: check ANY bingo on arbitrary board state */
+function checkAnyBingo(state) {
+  // rows
+  for (let r = 0; r < BINGO_SIZE; r++) {
+    if (state[r].every(v => v)) return true;
+  }
+  // columns
+  for (let c = 0; c < BINGO_SIZE; c++) {
+    if (state.every(row => row[c])) return true;
+  }
+  // diagonal TL → BR
+  if (state.every((row, i) => row[i])) return true;
+  // diagonal TR → BL
+  if (state.every((row, i) => row[BINGO_SIZE - 1 - i])) return true;
+
+  return false;
 }
 
-/* -------------------------------------------------------
-   START DASHBOARD
-------------------------------------------------------- */
-loadDashboard();
-</script>
+/* Handle Bingo Toggle (FIXED) */
+async function handleBingoClick(index, cell) {
+  const row = Math.floor(index / BINGO_SIZE);
+  const col = index % BINGO_SIZE;
+  const bonus = bingoData[index].bonus_minutes;
+  const challengeName = bingoData[index].challenge;
 
+  /* Deep clone previous state to compare before/after state */
+  const prevState = JSON.parse(JSON.stringify(userBingoState));
+
+  const wasCompleted = userBingoState[row][col];
+  const newCompleted = !wasCompleted;
+
+  /* Optimistic UI update */
+  userBingoState[row][col] = newCompleted;
+  cell.classList.toggle("completed", newCompleted);
+
+  /* Compute bingo BEFORE and AFTER toggle (correct way!) */
+  const hadBingoBefore = checkAnyBingo(prevState);
+  const hasBingoAfter = checkAnyBingo(userBingoState);
+
+  try {
+    /* DB Sync: upsert row */
+    const { data: existing } = await supabase
+      .from("user_bingo_state")
+      .select("*")
+      .eq("user_name", currentUser.user_name)
+      .eq("bingo_index", index)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      await supabase
+        .from("user_bingo_state")
+        .update({
+          completed: newCompleted,
+          completed_at: newCompleted ? new Date().toISOString() : null
+        })
+        .eq("user_name", currentUser.user_name)
+        .eq("bingo_index", index);
+    } else {
+      await supabase.from("user_bingo_state").insert([
+        {
+          user_name: currentUser.user_name,
+          bingo_index: index,
+          completed: true,
+          completed_at: new Date().toISOString()
+        }
+      ]);
+    }
+
+    /* Award or remove square bonus */
+    await logReadingMinutes(
+      currentUser,
+      newCompleted ? bonus : -bonus,
+      `${newCompleted ? "Bingo" : "Unmark Bingo"}: ${challengeName}`
+    );
+
+    /* Award bingo win */
+    if (!hadBingoBefore && hasBingoAfter) {
+      await logReadingMinutes(currentUser, BINGO_WIN_BONUS, "Bingo Board Win");
+    }
+
+    /* Remove bingo win */
+    if (hadBingoBefore && !hasBingoAfter) {
+      await logReadingMinutes(currentUser, -BINGO_WIN_BONUS, "Bingo Board Win Reverted");
+    }
+
+  } catch (err) {
+    console.error(err);
+
+    /* Rollback on error */
+    userBingoState[row][col] = wasCompleted;
+    cell.classList.toggle("completed", wasCompleted);
+
+    /* Reload to guarantee correct state */
+    await loadBingo();
+  }
+}
+
+/* Load bingo (unchanged) */
+async function loadBingo() {
+  try {
+    const data = await getBingoData();
+    if (!data || data.length < 25) {
+      console.warn("Not enough bingo challenges.");
+      return;
+    }
+
+    BINGO_WIN_BONUS = data.find(d => d.type === "win_bonus")?.bonus_minutes || 20;
+
+    userBingoState = await getUserBingoState(currentUser.user_name);
+    renderBingoBoard(data.slice(0, 25));
+  } catch (err) {
+    console.error("Error loading bingo:", err.message);
+  }
+}
+
+    /* === SUMMER CONFETTI === */
+const confettiCanvas = document.getElementById("confettiCanvas");
+const ctx = confettiCanvas.getContext("2d");
+
+function resizeConfetti() {
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+}
+resizeConfetti();
+window.addEventListener("resize", resizeConfetti);
+
+function launchConfetti() {
+  const confetti = [];
+  const colors = ["#ff8b2e", "#ffd54f", "#1cb8ff", "#ff6f91", "#45e1ff"];
+  const duration = 2500; // 2.5 seconds
+  const endTime = Date.now() + duration;
+
+  // Create rectangular confetti launched from bottom-left & bottom-right
+  for (let i = 0; i < 180; i++) {
+    const side = i % 2 === 0 ? "left" : "right";
+
+    confetti.push({
+      x: side === "left" ? 0 : confettiCanvas.width,
+      y: confettiCanvas.height,
+      w: Math.random() * 8 + 4,
+      h: Math.random() * 12 + 6,
+      c: colors[Math.floor(Math.random() * colors.length)],
+      vx: side === "left" ? (Math.random() * 4 + 2) : -(Math.random() * 4 + 2),
+      vy: -(Math.random() * 6 + 7), // shoot upward
+      gravity: 0.18 + Math.random() * 0.12,
+      rotation: Math.random() * 360,
+      vrot: Math.random() * 10 - 5
+    });
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+
+    confetti.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += p.gravity;
+
+      p.rotation += p.vrot;
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate((p.rotation * Math.PI) / 180);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    });
+
+    if (Date.now() < endTime) {
+      requestAnimationFrame(animate);
+    } else {
+      ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+    }
+  }
+
+  animate();
+}
+
+/* Hook into your bingo win condition */
+const originalHandleBingoClick = handleBingoClick;
+handleBingoClick = async function(index, cell) {
+  const prevState = JSON.parse(JSON.stringify(userBingoState));
+  await originalHandleBingoClick(index, cell);
+
+  // If we got a new bingo AFTER the toggle -> CONFETTI
+  const hadBingoBefore = checkAnyBingo(prevState);
+  const hasBingoAfter = checkAnyBingo(userBingoState);
+
+  if (!hadBingoBefore && hasBingoAfter) {
+    launchConfetti();
+  }
+};
+
+    /* ========= EVENT HANDLERS ========= */
+    document.getElementById('profileIcon').addEventListener('click', e => {
+      e.stopPropagation();
+      const dropdown = document.getElementById('profileDropdown');
+      dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    });
+    /* Dynamic resizing: phones, tablets, desktop */
+    window.addEventListener("resize", () => {
+    autoFitAllBingoText();
+  });
+
+  window.addEventListener("orientationchange", () => {
+  setTimeout(autoFitAllBingoText, 200); // allow rotation to settle
+});
+
+
+    document.addEventListener('click', e => {
+      if (!document.getElementById('profileIcon').contains(e.target))
+        document.getElementById('profileDropdown').style.display = 'none';
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      sessionStorage.removeItem('username');
+      window.location.href = 'login.html';
+    });
+
+    document.getElementById('logMinutesBtn').addEventListener('click', async () => {
+      const minutes = parseInt(document.getElementById('minutesInput').value);
+      const title = document.getElementById('bookTitleInput').value.trim();
+      const msg = document.getElementById('logMessage');
+      msg.textContent = '';
+      if (!title) return (msg.textContent = 'Please enter a book title.');
+      if (isNaN(minutes) || minutes < 1 || minutes > 120)
+        return (msg.textContent = 'Enter a valid number of minutes (1–120).');
+
+      try {
+        await logReadingMinutes(currentUser, minutes, title);
+        document.getElementById('minutesInput').value = '';
+        document.getElementById('bookTitleInput').value = '';
+        await loadDashboard();
+      } catch (err) {
+        msg.textContent = 'Error logging minutes: ' + err.message;
+      }
+    });
+
+    // 🕒 Stopwatch Feature
+    document.getElementById('stopwatchBtn').addEventListener('click', async () => {
+      const display = document.getElementById('stopwatchDisplay');
+      const btn = document.getElementById('stopwatchBtn');
+      const msg = document.getElementById('logMessage');
+      msg.textContent = '';
+
+      if (!stopwatchInterval) {
+        startTime = Date.now();
+        btn.textContent = 'Stop Stopwatch';
+        stopwatchInterval = setInterval(() => {
+          const elapsed = Date.now() - startTime;
+          display.textContent = '⏱ ' + formatTime(elapsed);
+        }, 1000);
+        return;
+      }
+
+      const title = document.getElementById('bookTitleInput').value.trim();
+      if (!title) return (msg.textContent = 'Please enter the book title before stopping the stopwatch.');
+
+      clearInterval(stopwatchInterval);
+      stopwatchInterval = null;
+      btn.textContent = 'Start Stopwatch';
+
+      const elapsedMinutes = Math.round((Date.now() - startTime) / 60000);
+      if (elapsedMinutes < 1) return (msg.textContent = 'Session too short to log (<1 min).');
+
+      if (confirm(`You read "${title}" for about ${elapsedMinutes} minute(s). Log this time?`)) {
+        await logReadingMinutes(currentUser, elapsedMinutes, title);
+        document.getElementById('bookTitleInput').value = '';
+        await loadDashboard();
+      }
+    });
+
+    window.addEventListener('resize', async () => {
+      const allLogs = await getAllLogs();
+      const total = allLogs.reduce((s, e) => s + e.minutes_logged, 0);
+      renderProgressBar(total);
+    });
+
+    /* ========= INIT ========= */
+    loadDashboard();
+  </script>
 </body>
 </html>
-
-
-
 
 
 
