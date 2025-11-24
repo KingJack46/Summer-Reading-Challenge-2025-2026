@@ -276,7 +276,7 @@
    INITIALIZE SUPABASE
 ------------------------------------------------------- */
 const SUPABASE_URL = "https://hfugnpqguidgosxyuioj.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_KEY";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdWducHFndWlkZ29zeHl1aW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NjE3ODAsImV4cCI6MjA3ODAzNzc4MH0.eawP-KaZTXOAE_OSYeJR6Ds_c6aKsqOsXo_EGifgtrU";
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;        // Auth user
@@ -507,6 +507,7 @@ loadDashboard();
 
 </body>
 </html>
+
 
 
 
