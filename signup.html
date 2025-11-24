@@ -116,9 +116,7 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
     id: userId,              // UUID is automatically created for the new user
     user_name: user_name,    // Save the username in the Userdetails table
     minutes_logged: 0,
-    reading_streak: 0,
-    last_login: new Date().toISOString()
-  }]);
+    reading_streak: 0  }]);
 
   if (insertError) {
     message.textContent = "Error saving user details: " + insertError.message;
@@ -136,4 +134,5 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
 
 </body>
 </html>
+
 
