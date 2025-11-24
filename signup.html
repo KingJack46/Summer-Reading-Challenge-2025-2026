@@ -79,40 +79,56 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
 
   message.textContent = "Checking username availability...";
 
-  // 🔍 Check if username exists in Auth user metadata
-  const { data: existingUsers, error: userError } = await supabase.auth.admin.listUsers();
+  /* 🔍 Check username in Userdetails (SAFE on client) */
+  const { data: taken } = await supabase
+    .from('Userdetails')
+    .select('user_name')
+    .ilike('user_name', user_name);
 
-  if (existingUsers?.users?.some(u =>
-      u.user_metadata?.user_name?.toLowerCase() === user_name.toLowerCase())) {
+  if (taken.length > 0) {
     message.textContent = "Username is already taken.";
     return;
   }
 
-  message.textContent = "Signing up...";
+  message.textContent = "Creating account...";
 
-  // 🟢 Create user via Supabase auth
-  const { data, error } = await supabase.auth.signUp({
+  /* 🟢 Create auth user */
+  const { data: authData, error: signupError } = await supabase.auth.signUp({
     email,
     phone,
     password,
     options: {
       data: {
-        user_name: user_name,
-        minutes_logged: 0,
-        last_login: new Date().toISOString()
+        user_name,
       }
     }
   });
 
-  if (error) {
-    message.textContent = "Error: " + error.message;
+  if (signupError) {
+    message.textContent = "Signup error: " + signupError.message;
     return;
   }
 
-  message.textContent = "Signup successful! Check your email or phone for confirmation.";
-  setTimeout(() => window.location.href = "login.html", 1500);
+  /* 🟢 Create matching Userdetails row */
+  const userId = authData.user.id;
+
+  await supabase.from('Userdetails').insert([{
+    id: userId,
+    user_name: user_name,
+    minutes_logged: 0,
+    reading_streak: 0,
+    last_login: new Date().toISOString()
+  }]);
+
+  message.textContent = "Signup successful! Please check your email/phone to confirm.";
+
+  setTimeout(() => {
+    window.location.href = "login.html";
+  }, 1500);
 });
-  </script>
+</script>
+
 </body>
 </html>
+
 
