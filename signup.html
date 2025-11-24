@@ -58,6 +58,66 @@
 
   <div id="message"></div>
 
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sign Up - Library Reading Challenge</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 400px;
+      margin: 50px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    input, button {
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #message {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .link-btn {
+      background: #6c757d;
+      margin-top: 10px;
+    }
+    .link-btn:hover {
+      background: #5a6268;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Sign Up</h2>
+
+  <form id="signupForm">
+    <input type="text" id="user_name" placeholder="Username" required><br>
+    <input type="password" id="password" placeholder="Password" required><br>
+    <input type="email" id="email_address" placeholder="Email (optional)"><br>
+    <input type="text" id="phone_number" placeholder="Phone number (optional)"><br>
+    <button type="submit">Sign Up</button>
+  </form>
+
+  <button class="link-btn" onclick="window.location.href='login.html'">Already have an account? Log In</button>
+
+  <div id="message"></div>
+
   <script>
 const SUPABASE_URL = 'https://hfugnpqguidgosxyuioj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdWducHFndWlkZ29zeHl1aW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NjE3ODAsImV4cCI6MjA3ODAzNzc4MH0.eawP-KaZTXOAE_OSYeJR6Ds_c6aKsqOsXo_EGifgtrU';
@@ -79,27 +139,24 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
 
   message.textContent = "Checking username availability...";
 
-  /* 🔍 Check username in Userdetails (SAFE on client) */
-  const { data: taken } = await supabase
-    .from('Userdetails')
-    .select('user_name')
-    .ilike('user_name', user_name);
-
-  if (taken.length > 0) {
+  // 🔍 Check if username already exists in auth users metadata
+  const { data: existingUsers, error: userError } = await supabase.auth.admin.listUsers();
+  
+  if (existingUsers?.users?.some(u => u.user_metadata?.user_name?.toLowerCase() === user_name.toLowerCase())) {
     message.textContent = "Username is already taken.";
     return;
   }
 
   message.textContent = "Creating account...";
 
-  /* 🟢 Create auth user */
-  const { data: authData, error: signupError } = await supabase.auth.signUp({
+  // 🟢 Create user via Supabase auth and store username in user_metadata
+  const { data, error: signupError } = await supabase.auth.signUp({
     email,
     phone,
     password,
     options: {
       data: {
-        user_name,
+        user_name: user_name,  // Store username in user_metadata
       }
     }
   });
@@ -109,27 +166,22 @@ document.getElementById('signupForm').addEventListener('submit', async (e) => {
     return;
   }
 
-  /* 🟢 Create matching Userdetails row */
-  const userId = authData.user.id;
-
-  await supabase.from('Userdetails').insert([{
-    id: userId,
-    user_name: user_name,
-    minutes_logged: 0,
-    reading_streak: 0,
-    last_login: new Date().toISOString()
-  }]);
-
   message.textContent = "Signup successful! Please check your email/phone to confirm.";
 
-  /*setTimeout(() => {
+  // Redirect to login page after a short delay
+  setTimeout(() => {
     window.location.href = "login.html";
-  }, 1500);*/
+  }, 1500);
 });
-</script>
+  </script>
 
 </body>
 </html>
+
+
+</body>
+</html>
+
 
 
 
