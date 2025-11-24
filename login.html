@@ -48,7 +48,7 @@
   <h2>Log In</h2>
 
   <form id="loginForm">
-    <input type="text" id="user_name" placeholder="Username" required><br>
+    <input type="email" id="user_name" placeholder="Email" required><br>
     <input type="password" id="password" placeholder="Password" required><br>
     <button type="submit">Log In</button>
   </form>
@@ -59,53 +59,40 @@
 
   <script>
 const SUPABASE_URL = 'https://hfugnpqguidgosxyuioj.supabase.co';
-const SUPABASE_ANON_KEY = 'your-anon-key';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdWducHFndWlkZ29zeHl1aW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NjE3ODAsImV4cCI6MjA3ODAzNzc4MH0.eawP-KaZTXOAE_OSYeJR6Ds_c6aKsqOsXo_EGifgtrU';  // Use your real anon key
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const usernameInput = document.getElementById('user_name').value.trim().toLowerCase();
+  const emailInput = document.getElementById('user_name').value.trim();
   const password = document.getElementById('password').value.trim();
   const message = document.getElementById('message');
 
   message.textContent = "Logging in...";
 
-  // 🟢 Try to log in with email or phone by matching the username first
-  // We can't directly search by metadata in the client, so we first try the login.
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-    email: usernameInput + '@domain.com',  // Try email based on username
-    password
+  // 🟢 Attempt to log in with the email and password
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: emailInput,
+    password: password
   });
 
-  if (authError) {
-    message.textContent = "Invalid username or password.";
+  if (error) {
+    message.textContent = "Invalid email or password.";
     return;
   }
 
-  // If login is successful, check if the username exists in the user metadata
-  if (authData) {
-    const userMetadata = authData.user.user_metadata;
-
-    if (userMetadata.user_name?.toLowerCase() !== usernameInput) {
-      message.textContent = "Invalid username or password.";
-      return;
+  // 🟢 Update last login timestamp after successful login
+  await supabase.auth.updateUser({
+    data: {
+      last_login: new Date().toISOString()
     }
+  });
 
-    // 🟢 Update last login timestamp after successful login
-    await supabase.auth.updateUser({
-      data: {
-        last_login: new Date().toISOString()
-      }
-    });
+  sessionStorage.setItem("username", emailInput);
 
-    sessionStorage.setItem("username", userMetadata.user_name);
-
-    message.textContent = "Login successful! Redirecting...";
-    setTimeout(() => window.location.href = "dashboard.html", 1000);
-  } else {
-    message.textContent = "Invalid username or password.";
-  }
+  message.textContent = "Login successful! Redirecting...";
+  setTimeout(() => window.location.href = "dashboard.html", 1000);
 });
   </script>
 </body>
