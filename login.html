@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>Login - Library Reading Challenge</title>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -48,7 +47,7 @@
   <h2>Log In</h2>
 
   <form id="loginForm">
-    <input type="email" id="user_name" placeholder="Email" required><br>
+    <input type="text" id="user_name" placeholder="Email" required><br> <!-- Use email for login -->
     <input type="password" id="password" placeholder="Password" required><br>
     <button type="submit">Log In</button>
   </form>
@@ -65,35 +64,46 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const emailInput = document.getElementById('user_name').value.trim();
+  const email = document.getElementById('user_name').value.trim();
   const password = document.getElementById('password').value.trim();
   const message = document.getElementById('message');
 
   message.textContent = "Logging in...";
 
-  // 🟢 Attempt to log in with the email and password
+  // 🟢 Login with Supabase Auth using email and password
   const { data, error } = await supabase.auth.signInWithPassword({
-    email: emailInput,
-    password: password
+    email,
+    password
   });
 
   if (error) {
-    message.textContent = "Invalid email or password.";
+    message.textContent = "Login error: " + error.message;
     return;
   }
 
-  // 🟢 Update last login timestamp after successful login
-  await supabase.auth.updateUser({
-    data: {
-      last_login: new Date().toISOString()
-    }
-  });
+  // 🔍 After login, fetch the user's UUID from the 'Userdetails' table using their email (this is the key)
+  const { data: userDetails, error: userDetailsError } = await supabase
+    .from('Userdetails')
+    .select('id')  // Get the user UUID
+    .eq('id', data.user.id)  // Use the logged-in user's UUID to fetch their details
+    .single();  // Only one user should match
 
-  sessionStorage.setItem("username", emailInput);
+  if (userDetailsError) {
+    message.textContent = "Error fetching user details: " + userDetailsError.message;
+    return;
+  }
 
-  message.textContent = "Login successful! Redirecting...";
-  setTimeout(() => window.location.href = "dashboard.html", 1000);
+  // 🟢 Store the user's UUID in sessionStorage
+  sessionStorage.setItem('userId', userDetails.id);
+
+  // 🟢 Redirect to dashboard after successful login
+  message.textContent = "Login successful! Redirecting to your dashboard...";
+
+  setTimeout(() => {
+    window.location.href = "dashboard.html";
+  }, 1500);
 });
   </script>
+
 </body>
 </html>
