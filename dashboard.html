@@ -634,7 +634,6 @@
       } else {
         await supabase.from("user_bingo_state").insert([{
           user_id: currentUser.id,         // UPDATED
-          user_name: currentUser.user_name,
           bingo_index: index,
           completed: true,
           completed_at: new Date().toISOString()
@@ -843,6 +842,7 @@
 </script>
 </body>
 </html>
+
 
 
 
