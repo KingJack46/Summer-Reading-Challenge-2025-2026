@@ -58,21 +58,54 @@
 
   <script>
 const SUPABASE_URL = 'https://hfugnpqguidgosxyuioj.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdWducHFndWlkZ29zeHl1aW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NjE3ODAsImV4cCI6MjA3ODAzNzc4MH0.eawP-KaZTXOAE_OSYeJR6Ds_c6aKsqOsXo_EGifgtrU';  // Use your real anon key
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdWducHFndWlkZ29zeHl1aW9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NjE3ODAsImV4cCI6MjA3ODAzNzc4MH0.eawP-KaZTXOAE_OSYeJR6Ds_c6aKsqOsXo_EGifgtrU';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Detect whether input looks like an email
+function isEmail(str) {
+  return /\S+@\S+\.\S+/.test(str);
+}
 
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const email = document.getElementById('user_name').value.trim();
+  const input = document.getElementById('user_name').value.trim(); // email OR username
   const password = document.getElementById('password').value.trim();
   const message = document.getElementById('message');
-
   message.textContent = "Logging in...";
 
-  // 🟢 Login with Supabase Auth using email and password
+  let emailToUse = input;
+
+  // 🔵 If user entered a USERNAME → look up its email using Userdetails table
+  if (!isEmail(input)) {
+    const { data: userDetail, error } = await supabase
+      .from('Userdetails')
+      .select('id')       // fetch UUID
+      .eq('user_name', input)
+      .single();
+
+    if (error || !userDetail) {
+      message.textContent = "No account found for that username.";
+      return;
+    }
+
+    const userId = userDetail.id;
+
+    // Now we retrieve Auth user using the UUID
+    const { data: authUser, error: authError } = await supabase.auth.getUser(userId);
+
+    if (!authUser || authError) {
+      message.textContent = "Could not find auth account for this username.";
+      return;
+    }
+
+    // Use their auth email
+    emailToUse = authUser.user.email;
+  }
+
+  // 🟢 Log in using email + password
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
+    email: emailToUse,
     password
   });
 
@@ -81,29 +114,27 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     return;
   }
 
-  // 🔍 After login, fetch the user's UUID from the 'Userdetails' table using their email (this is the key)
+  // Fetch userDetails row for UUID match
   const { data: userDetails, error: userDetailsError } = await supabase
     .from('Userdetails')
-    .select('id')  // Get the user UUID
-    .eq('id', data.user.id)  // Use the logged-in user's UUID to fetch their details
-    .single();  // Only one user should match
+    .select('id')
+    .eq('id', data.user.id)
+    .single();
 
   if (userDetailsError) {
     message.textContent = "Error fetching user details: " + userDetailsError.message;
     return;
   }
 
-  // 🟢 Store the user's UUID in sessionStorage
+  // Store UUID for dashboard
   sessionStorage.setItem('userId', userDetails.id);
 
-  // 🟢 Redirect to dashboard after successful login
-  message.textContent = "Login successful! Redirecting to your dashboard...";
-
-  setTimeout(() => {
-    window.location.href = "dashboard.html";
-  }, 1500);
+  message.textContent = "Login successful! Redirecting...";
+  setTimeout(() => window.location.href = "dashboard.html", 1200);
 });
-  </script>
+</script>
+
 
 </body>
 </html>
+
