@@ -330,7 +330,6 @@
   async function logReadingMinutes(user, minutes, bookTitle) {
     const { error } = await supabase.from('loghistory').insert([{
       user_id: user.id,               // NEW
-      user_name: user.user_name,      // kept for display
       minutes_logged: minutes,
       book_title: bookTitle,
       time_logged: new Date().toISOString()
@@ -842,6 +841,7 @@
 </script>
 </body>
 </html>
+
 
 
 
