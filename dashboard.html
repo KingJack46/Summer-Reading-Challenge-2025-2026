@@ -431,65 +431,72 @@
 
   /* ========= READING STREAK (unchanged except logs fetch) ========= */
   async function loadReadingStreak() {
-    if (!currentUser) return;
+  if (!currentUser) return;
 
-    const logs = await getUserLogsById(currentUser.id);
+  const logs = await getUserLogsById(currentUser.id);
 
-    const streakEl = document.getElementById("readingStreakDisplay");
-    const highScoreEl = document.getElementById("dailyHighScoreDisplay");
+  const streakEl = document.getElementById("readingStreakDisplay");
+  const highScoreEl = document.getElementById("dailyHighScoreDisplay");
 
-    if (!logs || logs.length === 0) {
-      streakEl.textContent = "Reading Streak: 0 days";
-      highScoreEl.textContent = "Daily High Score: 0 minutes";
-      return;
-    }
+  if (!logs || logs.length === 0) {
+    streakEl.textContent = "Reading Streak: 0 days";
+    highScoreEl.textContent = "Daily High Score: 0 minutes";
+    return;
+  }
 
-    let dayTotals = {};
-    logs.forEach(l => {
-      const day = new Date(l.time_logged).toISOString().slice(0, 10);
-      dayTotals[day] = (dayTotals[day] || 0) + l.minutes_logged;
-    });
+  // --- GROUP LOGS BY DAY ---
+  const dayTotals = {};
+  logs.forEach(l => {
+    const day = new Date(l.time_logged).toISOString().slice(0, 10);
+    dayTotals[day] = (dayTotals[day] || 0) + l.minutes_logged;
+  });
 
-    highScoreEl.textContent =
-      "Daily High Score: " + Math.max(...Object.values(dayTotals)) + " minutes";
+  highScoreEl.textContent =
+    "Daily High Score: " + Math.max(...Object.values(dayTotals)) + " minutes";
 
-    const days = Object.keys(dayTotals).sort().reverse();
+  // --- SORT DAYS NEWEST → OLDEST ---
+  const days = Object.keys(dayTotals).sort().reverse();
 
-    const today = new Date();
-    const latestDay = new Date(days[0]);
-    const THIRTY_TWO_HOURS = 32 * 60 * 60 * 1000;
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const yesterdayStr = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
 
-    if (today - latestDay > THIRTY_TWO_HOURS) {
-      streakEl.textContent = "Reading Streak: 0 days";
-      await supabase
-        .from("Userdetails")
-        .update({ reading_streak: 0 })
-        .eq("id", currentUser.id);
-      return;
-    }
+  const latestDay = days[0];
 
-    let streak = 1;
-
-    const daysBetween = (a, b) => {
-      const d1 = new Date(a);
-      const d2 = new Date(b);
-      return Math.round(
-        (d1 - d2) / (24 * 60 * 60 * 1000)
-      );
-    };
-
-    for (let i = 1; i < days.length; i++) {
-      if (daysBetween(days[i - 1], days[i]) === 1) streak++;
-      else break;
-    }
-
-    streakEl.textContent = `Reading Streak: ${streak} day(s)`;
+  // --- CHECK IF STREAK SHOULD RESET ---
+  if (latestDay !== todayStr && latestDay !== yesterdayStr) {
+    // Reset streak (not logged today or yesterday → streak broken)
+    streakEl.textContent = "Reading Streak: 0 days";
 
     await supabase
       .from("Userdetails")
-      .update({ reading_streak: streak })
+      .update({ reading_streak: 0 })
       .eq("id", currentUser.id);
+
+    return;
   }
+
+  // --- BUILD STREAK ---
+  let streak = 1;
+
+  const toDate = (str) => new Date(str + "T00:00:00Z");
+
+  for (let i = 1; i < days.length; i++) {
+    const prev = toDate(days[i - 1]);
+    const curr = toDate(days[i]);
+    const diffDays = (prev - curr) / 864e5;
+
+    if (diffDays === 1) streak++;
+    else break;
+  }
+
+  streakEl.textContent = `Reading Streak: ${streak} day(s)`;
+
+  await supabase
+    .from("Userdetails")
+    .update({ reading_streak: streak })
+    .eq("id", currentUser.id);
+}
 
   /* ========= DASHBOARD LOADER (MAIN FIX HERE) ========= */
   async function loadDashboard() {
@@ -841,6 +848,7 @@
 </script>
 </body>
 </html>
+
 
 
 
