@@ -95,47 +95,41 @@
 
     /* Progress Bar */
     .progress-container {
-      position: relative;
-      height: 30px;
-      background-color: #e0e0e0;
-      border-radius: 15px;
-      overflow: visible;
-      margin-top: 15px;
-    }
+  position: relative;
+  width: 100%;               /* NEW → makes it fit the section */
+  height: 30px;
+  background-color: #e0e0e0;
+  border-radius: 15px;
+  overflow: visible;
+  margin: 20px 0;
+}
 
-    .progress-bar {
-      height: 100%;
-      background: linear-gradient(90deg, #007bff, #00bfff);
-      width: 0%;
-      transition: width 0.5s ease;
-      border-radius: 15px 0 0 15px;
-    }
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #007bff, #00bfff);
+  width: 0%;
+  transition: width 0.5s ease;
+  border-radius: 15px 0 0 15px;
+}
 
-    .milestone {
-      position: absolute;
-      top: -8px;
-      width: 2px;
-      height: 46px;
-      background: #555;
-      z-index: 2;
-    }
+.milestone {
+  position: absolute;
+  top: -10px;                 /* lifted slightly */
+  width: 2px;
+  height: 50px;
+  background: #555;
+}
 
-    .milestone-label {
-      position: absolute;
-      bottom: 100%;
-      margin-bottom: 8px;
-      font-size: clamp(9px, 1.2vw, 11px);
-      transform: translateX(-50%);
-      color: #333;
-      font-weight: 500;
-      white-space: nowrap;
-      z-index: 3;
-    }
+.milestone-label {
+  position: absolute;
+  top: -25px;                 /* above bar, avoids overlap */
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+}
 
-    .progress-text {
-      margin-top: 10px;
-      font-weight: bold;
-    }
 
     /* Inputs + Buttons */
     input, button {
@@ -413,32 +407,40 @@ async function ensureUsername() {
 }
 
 
-  function renderProgressBar(total) {
-    const fill = document.getElementById('progressFill');
-    const text = document.getElementById('progressText');
-    const container = document.getElementById('communityProgressBar');
-    const percent = Math.min((total / COMMUNITY_GOAL) * 100, 100);
-    fill.style.width = `${percent}%`;
-    text.textContent = `Community has logged ${total.toLocaleString()} of ${COMMUNITY_GOAL.toLocaleString()} minutes (${percent.toFixed(2)}%)`;
+ function renderProgressBar(total) {
+  const fill = document.getElementById('progressFill');
+  const text = document.getElementById('progressText');
+  const container = document.getElementById('communityProgressBar');
 
-    container.querySelectorAll('.milestone, .milestone-label').forEach(el => el.remove());
-    const milestones = [10000, 50000, 100000];
-    for (let i = 200000; i <= COMMUNITY_GOAL; i += 100000) milestones.push(i);
+  const percent = Math.min((total / COMMUNITY_GOAL) * 100, 100);
+  fill.style.width = `${percent}%`;
 
-    milestones.forEach(ms => {
-      const pos = (ms / COMMUNITY_GOAL) * container.offsetWidth;
-      const line = document.createElement('div');
-      line.className = 'milestone';
-      line.style.left = `${pos}px`;
+  text.textContent =
+    `Community has logged ${total.toLocaleString()} of ${COMMUNITY_GOAL.toLocaleString()} minutes (${percent.toFixed(2)}%)`;
 
-      const label = document.createElement('div');
-      label.className = 'milestone-label';
-      label.textContent = ms >= 1_000_000 ? (ms / 1_000_000).toFixed(1) + 'M' : (ms >= 1000 ? (ms / 1000) + 'k' : ms);
-      label.style.left = `${pos}px`;
+  // Remove old markers
+  container.querySelectorAll('.milestone, .milestone-label').forEach(el => el.remove());
 
-      container.append(line, label);
-    });
-  }
+  const milestones = [10000, 50000, 100000];
+  for (let i = 200000; i <= COMMUNITY_GOAL; i += 100000) milestones.push(i);
+
+  milestones.forEach(ms => {
+    const pos = (ms / COMMUNITY_GOAL) * 100;
+
+    const line = document.createElement('div');
+    line.className = 'milestone';
+    line.style.left = `${pos}%`;
+
+    const label = document.createElement('div');
+    label.className = 'milestone-label';
+    label.style.left = `${pos}%`;
+    label.textContent =
+      ms >= 1_000_000 ? (ms / 1_000_000) + 'M'
+      : (ms >= 1000 ? (ms / 1000) + 'k' : ms);
+
+    container.append(line, label);
+  });
+}
 
   /* ========= BINGO AUTO-FIT ========= */
   function autoFitText(el) {
@@ -905,6 +907,7 @@ function toNZDateString(dateInput) {
 </script>
 </body>
 </html>
+
 
 
 
