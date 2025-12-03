@@ -329,7 +329,7 @@
   /* UPDATED — logMinutes now stores UUID */
   async function logReadingMinutes(user, minutes, bookTitle) {
     const { error } = await supabase.from('loghistory').insert([{
-      UUID: user.id,               // NEW
+      UUID: user.UUID,               // NEW
       minutes_logged: minutes,
       book_title: bookTitle,
       time_logged: new Date().toISOString()
@@ -433,7 +433,7 @@
   async function loadReadingStreak() {
   if (!currentUser) return;
 
-  const logs = await getUserLogsById(currentUser.id);
+  const logs = await getUserLogsById(currentUser.UUID);
 
   const streakEl = document.getElementById("readingStreakDisplay");
   const highScoreEl = document.getElementById("dailyHighScoreDisplay");
@@ -471,7 +471,7 @@
     await supabase
       .from("Userdetails")
       .update({ reading_streak: 0 })
-      .eq("UUID", currentUser.id);
+      .eq("UUID", currentUser.UUID);
 
     return;
   }
@@ -495,7 +495,7 @@
   await supabase
     .from("Userdetails")
     .update({ reading_streak: streak })
-    .eq("UUID", currentUser.id);
+    .eq("UUID", currentUser.UUID);
 }
 
   /* ========= DASHBOARD LOADER (MAIN FIX HERE) ========= */
@@ -518,7 +518,7 @@
   // 🔵 3. Render everything using existing logic
   renderWelcome(currentUser);
 
-  const userLogs = await getUserLogsById(currentUser.id);
+  const userLogs = await getUserLogsById(currentUser.UUID);
   const totalUserMinutes = userLogs.reduce((s, e) => s + e.minutes_logged, 0);
 
   renderUserMinutes(totalUserMinutes);
@@ -526,7 +526,7 @@
   await supabase
     .from("Userdetails")
     .update({ minutes_logged: totalUserMinutes })
-    .eq("UUID", currentUser.id);
+    .eq("UUID", currentUser.UUID);
 
   const allUsers = await getAllUsers();
   renderLeaderboard(allUsers);
@@ -628,7 +628,7 @@
       const { data: existing } = await supabase
         .from("user_bingo_state")
         .select("*")
-        .eq("UUID", currentUser.id)
+        .eq("UUID", currentUser.UUID)
         .eq("bingo_index", index)
         .limit(1);
 
@@ -639,11 +639,11 @@
             completed: newCompleted,
             completed_at: newCompleted ? new Date().toISOString() : null
           })
-          .eq("UUID", currentUser.id)
+          .eq("UUID", currentUser.UUID)
           .eq("bingo_index", index);
       } else {
         await supabase.from("user_bingo_state").insert([{
-          UUID: currentUser.id,         // UPDATED
+          UUID: currentUser.UUID,         // UPDATED
           bingo_index: index,
           completed: true,
           completed_at: new Date().toISOString()
@@ -682,7 +682,7 @@
 
       BINGO_WIN_BONUS = data.find(d => d.type === "win_bonus")?.bonus_minutes || 20;
 
-      userBingoState = await getUserBingoState(currentUser.id);
+      userBingoState = await getUserBingoState(currentUser.UUID);
       renderBingoBoard(data.slice(0, 25));
     } catch (err) {
       console.error("Error loading bingo:", err.message);
@@ -847,6 +847,7 @@
 </script>
 </body>
 </html>
+
 
 
 
