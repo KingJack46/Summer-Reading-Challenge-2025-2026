@@ -336,39 +336,64 @@
 async function ensureUsername() {
   if (!currentUser) return;
 
-  // If username is NOT null → continue normally
+  // If username already exists → skip
   if (currentUser.user_name && currentUser.user_name.trim() !== "") return;
 
   let newName = "";
 
-  // Repeat until a valid username is entered
-  while (!newName || newName.trim().length < 3) {
+  while (true) {
     newName = prompt(
-      "Welcome! To the Summer Reading Challenge. Please choose a unique display name, be sure not to include your real name or personal details:"
+      "Welcome to the Summer Reading Challenge!\n\nPlease choose a unique display name.\nDo NOT include your real name or personal details:\n"
     );
 
     if (newName === null) {
       alert("A display name is required to continue.");
+      continue;
     }
+
+    newName = newName.trim();
+
+    // Basic length check
+    if (newName.length < 3) {
+      alert("Username must be at least 3 characters.");
+      continue;
+    }
+
+    // Check for duplicates (case-insensitive)
+    const { data: existingUsers, error } = await supabase
+      .from("Userdetails")
+      .select("user_name")
+      .ilike("user_name", newName);
+
+    if (error) {
+      console.error("Username check failed:", error);
+      alert("Error checking username. Please try again.");
+      continue;
+    }
+
+    if (existingUsers.length > 0) {
+      alert(`The name "${newName}" is already taken. Try another one.`);
+      continue;
+    }
+
+    break; // Username is valid + not duplicated
   }
 
-  newName = newName.trim();
-
-  // Save username to Supabase
-  const { error } = await supabase
+  // Save username
+  const { error: updateError } = await supabase
     .from("Userdetails")
     .update({ user_name: newName })
     .eq("UUID", currentUser.UUID);
 
-  if (error) {
-    console.error("Failed to update username:", error.message);
+  if (updateError) {
+    console.error("Failed to update username:", updateError.message);
     alert("Error saving your username. Please try again.");
-    return ensureUsername(); // Try again
+    return ensureUsername(); // retry
   }
 
-  // Update in memory
   currentUser.user_name = newName;
 }
+
 
   /* ========= RENDER FUNCTIONS ========= */
   function renderWelcome(user) {
@@ -907,6 +932,7 @@ function toNZDateString(dateInput) {
 </script>
 </body>
 </html>
+
 
 
 
