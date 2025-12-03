@@ -501,40 +501,44 @@
   /* ========= DASHBOARD LOADER (MAIN FIX HERE) ========= */
   async function loadDashboard() {
 
-    /* ✔ NEW — check Supabase auth user, NOT sessionStorage */
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return (window.location.href = 'login.html');
-
-    /* ✔ NEW — load userdetails by UUID */
-    currentUser = await getUserDataById(user.id);
-
-    if (!currentUser) {
-      console.error("No matching userdetails row found for UUID:", user.id);
-      return (window.location.href = 'login.html');
-    }
-
-    renderWelcome(currentUser);
-
-    /* ✔ UPDATED — get logs by user_id */
-    const userLogs = await getUserLogsById(currentUser.id);
-    const totalUserMinutes = userLogs.reduce((s, e) => s + e.minutes_logged, 0);
-    renderUserMinutes(totalUserMinutes);
-
-    await supabase
-      .from('Userdetails')
-      .update({ minutes_logged: totalUserMinutes })
-      .eq('id', currentUser.id);
-
-    const allUsers = await getAllUsers();
-    renderLeaderboard(allUsers);
-
-    const allLogs = await getAllLogs();
-    const totalCommunityMinutes = allLogs.reduce((s, e) => s + e.minutes_logged, 0);
-    renderProgressBar(totalCommunityMinutes);
-
-    await loadBingo();
-    await loadReadingStreak();
+  // 🔵 1. Read UUID passed from login.html
+  const uuid = sessionStorage.getItem("userId");
+  if (!uuid) {
+    console.warn("No userId found, redirecting to login.");
+    return window.location.href = "login.html";
   }
+
+  // 🔵 2. Load Userdetails
+  currentUser = await getUserDataById(uuid);
+  if (!currentUser) {
+    console.warn("User not found, redirecting.");
+    return window.location.href = "login.html";
+  }
+
+  // 🔵 3. Render everything using existing logic
+  renderWelcome(currentUser);
+
+  const userLogs = await getUserLogsById(currentUser.id);
+  const totalUserMinutes = userLogs.reduce((s, e) => s + e.minutes_logged, 0);
+
+  renderUserMinutes(totalUserMinutes);
+
+  await supabase
+    .from("Userdetails")
+    .update({ minutes_logged: totalUserMinutes })
+    .eq("id", currentUser.id);
+
+  const allUsers = await getAllUsers();
+  renderLeaderboard(allUsers);
+
+  const allLogs = await getAllLogs();
+  const totalCommunityMinutes = allLogs.reduce((s, e) => s + e.minutes_logged, 0);
+  renderProgressBar(totalCommunityMinutes);
+
+  await loadBingo();
+  await loadReadingStreak();
+}
+
 
   /* ========= BINGO LOGIC (ONLY UPDATED WHERE USERNAME → user_id) ========= */
   const BINGO_SIZE = 5;
@@ -780,11 +784,6 @@
       document.getElementById('profileDropdown').style.display = 'none';
   });
 
-  document.getElementById('logoutBtn').addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    window.location.href = 'login.html';
-  });
-
   document.getElementById('logMinutesBtn').addEventListener('click', async () => {
     const minutes = parseInt(document.getElementById('minutesInput').value);
     const title = document.getElementById('bookTitleInput').value.trim();
@@ -848,6 +847,7 @@
 </script>
 </body>
 </html>
+
 
 
 
