@@ -387,24 +387,31 @@ async function ensureUsername() {
   }
 
   function renderLeaderboard(users) {
-    const container = document.getElementById('leaderboardContainer');
-    container.innerHTML = '';
-    if (!users.length) return (container.textContent = 'No leaderboard data available.');
+  const container = document.getElementById('leaderboardContainer');
+  container.innerHTML = '';
+  if (!users.length) return (container.textContent = 'No leaderboard data available.');
 
-    users
-      .sort((a, b) => b.minutes_logged - a.minutes_logged)
-      .slice(0, 10)
-      .forEach(user => {
-        const bar = document.createElement('div');
-        bar.classList.add('leaderboard-bar');
-        bar.innerHTML = `
-          <div class="leaderboard-profile">${user.user_name[0].toUpperCase()}</div>
-          <div style="background:#007bff;width:${Math.min(user.minutes_logged / 10,300)}px;height:30px;border-radius:4px;"></div>
-          <div class="leaderboard-label">${user.user_name}: ${user.minutes_logged} min</div>
-        `;
-        container.appendChild(bar);
-      });
-  }
+  users
+    .sort((a, b) => b.minutes_logged - a.minutes_logged)
+    .slice(0, 10)
+    .forEach(user => {
+
+      const displayName = user.user_name ?? "Unknown User";
+      const initial = displayName[0].toUpperCase();
+
+      const bar = document.createElement('div');
+      bar.classList.add('leaderboard-bar');
+
+      bar.innerHTML = `
+        <div class="leaderboard-profile">${initial}</div>
+        <div style="background:#007bff;width:${Math.min(user.minutes_logged / 10,300)}px;height:30px;border-radius:4px;"></div>
+        <div class="leaderboard-label">${displayName}: ${user.minutes_logged} min</div>
+      `;
+
+      container.appendChild(bar);
+    });
+}
+
 
   function renderProgressBar(total) {
     const fill = document.getElementById('progressFill');
@@ -898,6 +905,7 @@ function toNZDateString(dateInput) {
 </script>
 </body>
 </html>
+
 
 
 
