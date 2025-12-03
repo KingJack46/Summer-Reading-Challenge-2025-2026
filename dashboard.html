@@ -552,6 +552,7 @@ async function ensureUsername() {
     console.warn("User not found, redirecting.");
     return window.location.href = "login.html";
   }
+  await ensureUsername();
 
   // 🔵 3. Render everything using existing logic
   renderWelcome(currentUser);
@@ -885,6 +886,7 @@ async function ensureUsername() {
 </script>
 </body>
 </html>
+
 
 
 
