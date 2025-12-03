@@ -482,28 +482,25 @@ async function ensureUsername() {
     return;
   }
 
-  // --- GROUP LOGS BY DAY ---
+  /* ---- GROUP BY NZ LOCAL DATE ---- */
   const dayTotals = {};
   logs.forEach(l => {
-    const day = new Date(l.time_logged).toISOString().slice(0, 10);
+    const day = toNZDateString(l.time_logged);  // NZ FIX
     dayTotals[day] = (dayTotals[day] || 0) + l.minutes_logged;
   });
 
   highScoreEl.textContent =
     "Daily High Score: " + Math.max(...Object.values(dayTotals)) + " minutes";
 
-  // --- SORT DAYS NEWEST → OLDEST ---
   const days = Object.keys(dayTotals).sort().reverse();
 
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-  const yesterdayStr = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  const todayStr = toNZDateString(Date.now());          // NZ FIX
+  const yesterdayStr = toNZDateString(Date.now() - 864e5);
 
   const latestDay = days[0];
 
-  // --- CHECK IF STREAK SHOULD RESET ---
+  /* ---- CHECK IF STREAK BREAKS ---- */
   if (latestDay !== todayStr && latestDay !== yesterdayStr) {
-    // Reset streak (not logged today or yesterday → streak broken)
     streakEl.textContent = "Reading Streak: 0 days";
 
     await supabase
@@ -514,10 +511,9 @@ async function ensureUsername() {
     return;
   }
 
-  // --- BUILD STREAK ---
+  /* ---- BUILD STREAK ---- */
+  const toDate = (str) => new Date(str + "T00:00:00"); // local NZ
   let streak = 1;
-
-  const toDate = (str) => new Date(str + "T00:00:00Z");
 
   for (let i = 1; i < days.length; i++) {
     const prev = toDate(days[i - 1]);
@@ -535,6 +531,7 @@ async function ensureUsername() {
     .update({ reading_streak: streak })
     .eq("UUID", currentUser.UUID);
 }
+
 
   /* ========= DASHBOARD LOADER (MAIN FIX HERE) ========= */
   async function loadDashboard() {
@@ -886,6 +883,7 @@ async function ensureUsername() {
 </script>
 </body>
 </html>
+
 
 
 
