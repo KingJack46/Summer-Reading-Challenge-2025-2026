@@ -338,6 +338,44 @@
     if (error) throw error;
   }
 
+    /* ========= USERNAME PROMPT IF MISSING ========= */
+async function ensureUsername() {
+  if (!currentUser) return;
+
+  // If username is NOT null → continue normally
+  if (currentUser.user_name && currentUser.user_name.trim() !== "") return;
+
+  let newName = "";
+
+  // Repeat until a valid username is entered
+  while (!newName || newName.trim().length < 2) {
+    newName = prompt(
+      "Welcome! Please enter a display name (at least 2 characters):"
+    );
+
+    if (newName === null) {
+      alert("A username is required to continue.");
+    }
+  }
+
+  newName = newName.trim();
+
+  // Save username to Supabase
+  const { error } = await supabase
+    .from("Userdetails")
+    .update({ user_name: newName })
+    .eq("UUID", currentUser.UUID);
+
+  if (error) {
+    console.error("Failed to update username:", error.message);
+    alert("Error saving your username. Please try again.");
+    return ensureUsername(); // Try again
+  }
+
+  // Update in memory
+  currentUser.user_name = newName;
+}
+
   /* ========= RENDER FUNCTIONS ========= */
   function renderWelcome(user) {
     document.getElementById('profileInitial').textContent = user.user_name[0].toUpperCase();
@@ -847,6 +885,7 @@
 </script>
 </body>
 </html>
+
 
 
 
