@@ -348,13 +348,13 @@ async function ensureUsername() {
   let newName = "";
 
   // Repeat until a valid username is entered
-  while (!newName || newName.trim().length < 2) {
+  while (!newName || newName.trim().length < 3) {
     newName = prompt(
-      "Welcome! Please enter a display name (at least 2 characters):"
+      "Welcome! To the Summer Reading Challenge. Please choose a unique display name, be sure not to include your real name or personal details:"
     );
 
     if (newName === null) {
-      alert("A username is required to continue.");
+      alert("A display name is required to continue.");
     }
   }
 
@@ -886,6 +886,7 @@ async function ensureUsername() {
 </script>
 </body>
 </html>
+
 
 
 
