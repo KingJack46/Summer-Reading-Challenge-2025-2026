@@ -30,7 +30,7 @@ if (!code || code.length !== 16) {
   const { data, error } = await supabase
     .from("Userdetails")
     .select("id, user_name")
-    .eq("qr_code", code)
+    .eq("UUID", code)
     .single();
 
   if (error || !data) {
@@ -48,3 +48,4 @@ if (!code || code.length !== 16) {
 
 </body>
 </html>
+
