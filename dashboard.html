@@ -296,7 +296,7 @@
     const { data, error } = await supabase
       .from('Userdetails')
       .select('*')
-      .eq('id', uuid)
+      .eq('UUID', uuid)
       .single();
     if (error) throw error;
     return data;
@@ -307,7 +307,7 @@
     const { data, error } = await supabase
       .from('loghistory')
       .select('minutes_logged, time_logged')
-      .eq('user_id', userId)
+      .eq('UUID', userId)
       .order("time_logged", { ascending: false });
 
     if (error) throw error;
@@ -471,7 +471,7 @@
     await supabase
       .from("Userdetails")
       .update({ reading_streak: 0 })
-      .eq("id", currentUser.id);
+      .eq("UUID", currentUser.id);
 
     return;
   }
@@ -495,7 +495,7 @@
   await supabase
     .from("Userdetails")
     .update({ reading_streak: streak })
-    .eq("id", currentUser.id);
+    .eq("UUID", currentUser.id);
 }
 
   /* ========= DASHBOARD LOADER (MAIN FIX HERE) ========= */
@@ -526,7 +526,7 @@
   await supabase
     .from("Userdetails")
     .update({ minutes_logged: totalUserMinutes })
-    .eq("id", currentUser.id);
+    .eq("UUID", currentUser.id);
 
   const allUsers = await getAllUsers();
   renderLeaderboard(allUsers);
@@ -559,7 +559,7 @@
     const { data, error } = await supabase
       .from("user_bingo_state")
       .select("*")
-      .eq("user_id", userId);
+      .eq("UUID", userId);
 
     if (error) throw error;
 
@@ -628,7 +628,7 @@
       const { data: existing } = await supabase
         .from("user_bingo_state")
         .select("*")
-        .eq("user_id", currentUser.id)
+        .eq("UUID", currentUser.id)
         .eq("bingo_index", index)
         .limit(1);
 
@@ -639,7 +639,7 @@
             completed: newCompleted,
             completed_at: newCompleted ? new Date().toISOString() : null
           })
-          .eq("user_id", currentUser.id)
+          .eq("UUID", currentUser.id)
           .eq("bingo_index", index);
       } else {
         await supabase.from("user_bingo_state").insert([{
@@ -847,6 +847,7 @@
 </script>
 </body>
 </html>
+
 
 
 
