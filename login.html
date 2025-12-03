@@ -29,7 +29,7 @@ if (!code || code.length !== 16) {
   // Look up user by QR code
   const { data, error } = await supabase
     .from("Userdetails")
-    .select("id, user_name")
+    .select("UUID, user_name")
     .eq("UUID", code)
     .single();
 
@@ -39,7 +39,7 @@ if (!code || code.length !== 16) {
   }
 
   // Store UUID for dashboard
-  sessionStorage.setItem("userId", data.id);
+  sessionStorage.setItem("userId", data.UUID);
 
   status.textContent = "Login successful! Redirecting...";
   window.location.href = "dashboard.html";
@@ -48,4 +48,5 @@ if (!code || code.length !== 16) {
 
 </body>
 </html>
+
 
