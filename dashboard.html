@@ -302,7 +302,7 @@
     return data;
   }
 
-  /* UPDATED — get logs filtered by user_id instead of username */
+  /* UPDATED — get logs filtered by UUID instead of username */
   async function getUserLogsById(userId) {
     const { data, error } = await supabase
       .from('loghistory')
@@ -326,10 +326,10 @@
     return data;
   }
 
-  /* UPDATED — logMinutes now stores user_id */
+  /* UPDATED — logMinutes now stores UUID */
   async function logReadingMinutes(user, minutes, bookTitle) {
     const { error } = await supabase.from('loghistory').insert([{
-      user_id: user.id,               // NEW
+      UUID: user.id,               // NEW
       minutes_logged: minutes,
       book_title: bookTitle,
       time_logged: new Date().toISOString()
@@ -540,7 +540,7 @@
 }
 
 
-  /* ========= BINGO LOGIC (ONLY UPDATED WHERE USERNAME → user_id) ========= */
+  /* ========= BINGO LOGIC (ONLY UPDATED WHERE USERNAME → UUID) ========= */
   const BINGO_SIZE = 5;
   let bingoData = [];
   let userBingoState = Array(BINGO_SIZE).fill(null).map(() => Array(BINGO_SIZE).fill(false));
@@ -554,7 +554,7 @@
     return data;
   }
 
-  /* UPDATED — fetch by user_id */
+  /* UPDATED — fetch by UUID */
   async function getUserBingoState(userId) {
     const { data, error } = await supabase
       .from("user_bingo_state")
@@ -643,7 +643,7 @@
           .eq("bingo_index", index);
       } else {
         await supabase.from("user_bingo_state").insert([{
-          user_id: currentUser.id,         // UPDATED
+          UUID: currentUser.id,         // UPDATED
           bingo_index: index,
           completed: true,
           completed_at: new Date().toISOString()
@@ -847,6 +847,7 @@
 </script>
 </body>
 </html>
+
 
 
 
